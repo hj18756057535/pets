@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>PetDesk · 陪伴空间</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="import.css"><link rel="stylesheet" href="reminders.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#home"><img src="../assets/icon.png" alt=""><span>PetDesk<small>给桌面一点陪伴</small></span></a>
+    <div class="nav-label">我的小空间</div>
+    <nav aria-label="主导航">
+      <button data-tab="home" class="nav active"><span class="nav-icon">⌂</span>陪伴空间</button>
+      <button data-tab="reminders" class="nav"><span class="nav-icon">◷</span>会议提醒<span id="nav-count" class="nav-count">0</span></button>
+      <button data-tab="settings" class="nav"><span class="nav-icon">☷</span>偏好设置</button>
+    </nav>
+    <div class="sidebar-note"><span class="status-dot"></span>安心待在你的电脑里<p>提醒与偏好保存在本地<br>陪伴不需要联网</p></div>
+    <div class="sidebar-bottom"><span>LOCAL COMPANION</span><small>v0.1 · 自用预览版</small></div>
+  </aside>
+  <main>
+    <header><div><div class="eyebrow" id="today"></div><h1 id="page-title">今天，也一起好好工作。</h1></div><button id="quiet-top" class="quiet-button">☾ <span>免打扰</span></button></header>
+    <div id="warning" class="warning" role="alert" hidden></div>
+    <section id="home" class="page">
+      <div class="home-grid">
+        <article class="pet-card">
+          <div class="card-top"><span class="tag">我的桌面小伙伴</span><span class="online"><i></i>本地陪伴</span></div>
+          <div class="pet-scene"><span class="scene-star one">✧</span><span class="scene-star two">＋</span><div class="scene-orbit"></div><canvas id="preview" aria-label="宠物动画预览"></canvas><div class="pet-shadow"></div><div id="no-pet" hidden>给这个位置选一位小伙伴</div></div>
+          <h2 id="pet-name">等待小伙伴</h2><p class="pet-subtitle">你忙你的，我在这里。</p>
+          <div class="action-row" aria-label="宠物互动"><button data-action="waving">挥挥手</button><button data-action="jumping">蹦一下</button><button data-action="review">陪我专注</button></div>
+          <button id="show-pet" class="primary full">让小伙伴回到桌面 <span>↗</span></button>
+          <button id="import-pet" class="text-button">换一位小伙伴 · 导入宠物</button>
+        </article>
+        <div class="right-stack">
+          <article class="next-card"><div class="section-title"><h2>下一件重要的事</h2><span class="small-symbol">◷</span></div><div id="next-reminder"></div><button class="text-button" data-tab="reminders">安排一个会议提醒 <span>＋</span></button></article>
+          <article class="tip-card"><span class="tip-icon">✦</span><div><h3>安静陪伴，认真提醒</h3><p>拖动桌宠，找到它喜欢的位置。<br>点击挥手，双击打开这里。</p></div></article>
+          <div class="mini-stats"><div><strong id="pending-count">0</strong><span>待办提醒</span></div><div><strong id="done-count">0</strong><span>已结束</span></div><div><strong class="local-label">本地</strong><span>数据保存</span></div></div>
+        </div>
+      </div>
+      <article class="inbox"><div class="section-title"><h2>提醒动态 <span id="inbox-count" class="subtle"></span></h2><button class="text-button" data-tab="reminders">查看全部 →</button></div><div id="home-inbox"></div></article>
+      <footer><span class="status-dot"></span>关闭这个窗口后，桌宠与提醒会继续运行。彻底退出请使用系统托盘菜单。</footer>
+    </section>
+    <section id="reminders" class="page" hidden>
+      <div class="reminder-layout">
+        <article class="form-card"><div class="section-title"><h2>留一件事给我记着</h2><span class="small-symbol">＋</span></div><p class="helper">到时间，我会举起小纸条叫你。</p>
+          <div class="quick-entry"><label for="quick-reminder">一句话安排</label><div class="quick-input"><input id="quick-reminder" placeholder="明天 09:30 项目碰头会" maxlength="160"><button id="parse-reminder" class="secondary">填入表单</button></div><div class="time-chips"><button data-template="今天下午3点项目会">今天下午 3 点…</button><button data-template="明天 09:30 晨会">明天 09:30…</button><button data-template="周三14点需求评审">周三 14 点…</button></div><p id="quick-error" class="form-error" role="alert"></p></div><form id="reminder-form"><label for="meeting-title">会议 / 事项名称</label><input id="meeting-title" maxlength="100" placeholder="例如：周一项目碰头会" required autocomplete="off">
+            <label for="meeting-date">开始时间 <span class="subtle">本机时区 · 24 小时制</span></label><div class="date-time-row"><input id="meeting-date" type="date" required aria-label="会议日期"><input id="meeting-time" type="text" required placeholder="09:30" aria-label="会议时间" maxlength="5" inputmode="numeric" list="clock-options"></div><datalist id="clock-options"><option value="09:00"><option value="10:00"><option value="12:00"><option value="14:00"><option value="15:00"><option value="18:00"><option value="20:00"></datalist><div class="time-chips"><button type="button" data-day="hour">下个整点</button><button type="button" data-day="0">今天</button><button type="button" data-day="1">明天</button><button type="button" data-day="2">后天</button></div><label for="meeting-weekday" class="sr-only">选择星期</label><select id="meeting-weekday"><option value="">或选择最近的星期…</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="0">周日</option></select><p class="field-note">支持输入 9、930、09:30。周几选择未来最近一次。</p><div id="time-preview" class="time-preview" aria-live="polite"></div>
+            <label for="meeting-lead">什么时候叫你</label><select id="meeting-lead"><option value="0">准时提醒</option><option value="5" selected>提前 5 分钟</option><option value="10">提前 10 分钟</option><option value="15">提前 15 分钟</option><option value="30">提前 30 分钟</option></select>
+            <p class="field-note">若提前提醒时间已过，保存后立即提醒。</p><button type="submit" class="primary full" id="save-reminder">交给小伙伴记住</button><p id="form-error" class="form-error" role="alert"></p>
+          </form><div class="form-divider"></div><button id="test-reminder" class="secondary full">体验一次提醒 · 10 秒后</button><p class="field-note">此测试也会保存在提醒列表中。</p>
+        </article>
+        <article class="list-card"><div class="section-title"><h2>我的提醒</h2><span id="list-count" class="tag"></span></div><div class="list-tabs"><button class="selected" data-filter="open">待处理</button><button data-filter="done">已结束</button></div><div id="reminder-list"></div></article>
+      </div>
+      <footer>电脑关机或软件退出时无法提醒；重新打开或从休眠唤醒后，会显示尚未处理的到期事项。</footer>
+    </section>
+    <section id="settings" class="page" hidden>
+      <article class="settings-card" id="eye-settings">
+        <div class="section-title"><h2>让眼睛也摸会儿鱼</h2><span class="tag">护眼提醒</span></div>
+        <label class="setting-row"><span><strong>使用一段时间，提醒离开屏幕</strong><small>轮换搞笑小纸条，不强制锁屏。会议提醒优先显示。</small></span><input id="setting-eye" class="toggle" type="checkbox"></label>
+        <form id="eye-interval-form" class="eye-interval"><label for="eye-minutes">每使用</label><input id="eye-minutes" type="number" min="5" max="180" step="1" required aria-label="护眼提醒间隔分钟"><span>分钟提醒</span><button class="secondary" type="submit">保存间隔</button></form>
+        <div class="time-chips" aria-label="护眼提醒快捷间隔"><button data-eye-minutes="20">20 分钟</button><button data-eye-minutes="30">30 分钟</button><button data-eye-minutes="45">45 分钟</button><button data-eye-minutes="60">60 分钟</button></div>
+        <p class="field-note">按本机键鼠活动估算，不读取屏幕或摄像头。闲置 1 分钟暂停计时，2 分钟后重新计时；锁屏、休眠或重启后重新开始。免打扰期间暂停。</p>
+        <div id="eye-pending" class="eye-pending" hidden><strong id="eye-message"></strong><p>离开屏幕，看看远处，也活动一下。</p><button id="eye-done" class="secondary">去歇会儿</button> <button id="eye-snooze" class="text-button">5 分钟后</button></div>
+        <button id="eye-preview" class="secondary">体验一条搞笑提醒</button><span id="eye-status" class="subtle eye-status"></span>
+      </article>
+      <article class="settings-card"><div class="section-title"><h2>按你的节奏来</h2><span class="tag">本地保存</span></div>
+        <label class="setting-row"><span><strong>免打扰</strong><small>暂停气泡和声音，到期事项保留在提醒列表；关闭后显示。</small></span><input id="setting-quiet" class="toggle" type="checkbox"></label>
+        <label class="setting-row"><span><strong>系统提醒声音</strong><small>允许 Windows 通知播放声音，仍遵循系统通知设置。</small></span><input id="setting-sound" class="toggle" type="checkbox"></label>
+        <label class="setting-row"><span><strong>减少动画</strong><small>保持静态形象，继续正常接收提醒。</small></span><input id="setting-motion" class="toggle" type="checkbox"></label>
+        <label class="setting-row"><span><strong>桌宠大小</strong><small>默认缩小到原来的 60%；拖到屏幕左右侧边可收起。</small></span><select id="setting-scale"><option value="0.45">迷你 · 45%</option><option value="0.6">轻巧 · 60%</option><option value="0.8">小号 · 80%</option><option value="1">原大小</option><option value="1.2">大号 · 120%</option></select></label>
+      </article>
+      <article class="settings-card about"><h2>小而可靠，慢慢长大。</h2><p>PetDesk 0.1 专注于本地桌宠与会议提醒。支持标准 Codex V1 / V2 宠物包导入，V2 目前播放基础动作。</p><div class="about-grid"><div><strong>本地优先</strong><span>无需账号，无需上传宠物照片。</span></div><div><strong>随时找回</strong><span>系统托盘菜单，或 Ctrl + Shift + P。</span></div></div><p class="field-note">当前版本未连接 Codex 通知，未修改系统鼠标，也不包含天气、云端生成或收费功能。</p><button id="dock-pet" class="secondary">收起到侧边</button> <button id="hide-pet" class="secondary">暂时隐藏桌宠</button><button id="quit" class="text-button danger">退出软件</button></article>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="import-dialog" aria-labelledby="import-title">
+    <div class="section-title"><h2 id="import-title">接一位新伙伴回家</h2><button id="import-close" class="text-button" aria-label="关闭导入">✕</button></div>
+    <p class="import-intro">直接导入下载的压缩包，或粘贴 Codex Pets 分享链接。</p>
+    <div class="import-guide"><button id="pet-website" class="text-button">在 Codex Pets 下载宠物 ↗</button><span>codex-pets.net</span><ol><li>打开网站，选择喜欢的宠物并下载 <b>.codex-pet.zip</b>。</li><li>无需解压，点击下方“选择 ZIP 压缩包”。已解压时，选择包含 <b>pet.json</b> 和 <b>spritesheet.webp</b> 的文件夹。</li><li>也可以复制网站的 <b>/share/…</b> 分享链接，在下方读取预览，再点击“使用这只宠物”。</li></ol><p>文件在本机读取，不会上传；资源使用请遵循作者说明。</p></div><div class="import-local"><button id="import-zip" class="primary">选择 ZIP 压缩包</button><button id="import-folder" class="secondary">选择文件夹</button></div>
+    <div class="import-divider"><span>也可以通过链接</span></div>
+    <form id="import-link-form"><label for="import-url">宠物分享链接</label><div class="import-url-row"><input id="import-url" type="url" placeholder="https://codex-pets.net/share/…" required maxlength="2048" autocomplete="off"><button id="import-fetch" class="secondary" type="submit">读取预览</button></div></form>
+    <p id="import-status" class="import-status" role="status" aria-live="polite">支持 .codex-pet.zip、普通 ZIP 和宠物文件夹。</p>
+    <div id="import-preview" hidden><canvas id="import-canvas" aria-label="即将导入的宠物动画预览"></canvas><div><h3 id="import-name"></h3><p id="import-description"></p><span id="import-version" class="tag"></span></div></div>
+    <p id="import-error" class="form-error" role="alert" hidden></p>
+    <div class="import-footer"><span>确认前，当前宠物保持不变。</span><button id="import-apply" class="primary" disabled>使用这只宠物</button></div>
+  </dialog>
+  <script type="module" src="panel.js"></script>
+</body></html>

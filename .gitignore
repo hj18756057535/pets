@@ -1,0 +1,42 @@
+node_modules/
+.npm-cache/
+.electron-cache/
+.data/
+.local-pets/
+release/
+artifacts/
+pet-preview.png
+*.log
+
+# Build outputs and downloaded pet packs
+dist/
+out/
+coverage/
+*.codex-pet.zip
+*.exe
+*.msi
+*.dmg
+*.AppImage
+
+# Local credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.pfx
+*.p12
+.codex/
+.agents/
+.idea/
+.vscode/
+
+# OS and editor temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.swp
+*.swo
+*~
