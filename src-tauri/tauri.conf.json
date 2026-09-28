@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PetDesk",
+  "version": "0.1.0",
+  "identifier": "local.petdesk.app",
+  "build": {
+    "beforeDevCommand": { "script": "node tools/prepare-tauri.cjs", "wait": true },
+    "beforeBuildCommand": "node tools/prepare-tauri.cjs",
+    "frontendDist": "../dist-tauri"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "windows": { "webviewInstallMode": { "type": "downloadBootstrapper" } }
+  }
+}

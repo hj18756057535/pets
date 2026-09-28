@@ -1,2 +1,3 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Start-PetDesk.ps1"
+wscript.exe "%~dp0Start-PetDesk.vbs"
+exit /b

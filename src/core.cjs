@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {validateRepeat} = require('./recurrence.cjs');
 
 function defaults() {
   return { version: 1, settings: { quiet: false, sound: false, reducedMotion: false, scale: 0.6, eyeBreak: true, eyeMinutes: 30 }, position: null, dock: null, reminders: [] };
@@ -9,6 +10,7 @@ function defaults() {
 function validateState(value) {
   if (!value || value.version !== 1 || !Array.isArray(value.reminders) || value.reminders.length > 500) throw new Error('不支持的本地数据格式');
   const result = defaults();
+  if (Number.isFinite(value.petPosition?.x) && Number.isFinite(value.petPosition?.y)) result.petPosition = { x: value.petPosition.x, y: value.petPosition.y };
   for (const key of ['quiet', 'sound', 'reducedMotion']) result.settings[key] = value.settings?.[key] === true;
   const scale = value.settings?.scale;
   result.settings.eyeBreak = value.settings?.eyeBreak !== false;
@@ -22,7 +24,9 @@ function validateState(value) {
   result.reminders = value.reminders.map(r => {
     if (!r || typeof r.id !== 'string' || ids.has(r.id) || typeof r.title !== 'string' || !r.title.trim() || r.title.length > 100 || !Number.isFinite(Date.parse(r.dueAt)) || !Number.isFinite(Date.parse(r.meetingAt)) || !['pending', 'active', 'done'].includes(r.status)) throw new Error('提醒数据损坏');
     ids.add(r.id);
-    return { id: r.id, title: r.title, dueAt: r.dueAt, meetingAt: r.meetingAt, status: r.status, createdAt: r.createdAt };
+    const clean = { id: r.id, title: r.title, dueAt: r.dueAt, meetingAt: r.meetingAt, status: r.status, createdAt: r.createdAt };
+    if (r.repeat) { clean.repeat = validateRepeat(r.repeat); clean.seriesId = typeof r.seriesId === 'string' ? r.seriesId : r.id; }
+    return clean;
   });
   return result;
 }
@@ -74,7 +78,14 @@ function makeReminder(input, now = Date.now()) {
   if (!title || title.length > 100) throw new Error('请输入 1～100 字的会议名称');
   if (!Number.isFinite(meeting) || meeting <= now) throw new Error('请选择未来的会议时间');
   if (!Number.isInteger(lead) || lead < 0 || lead > 1440) throw new Error('提前提醒时间应为 0～1440 分钟');
-  return { id: crypto.randomUUID(), title, meetingAt: new Date(meeting).toISOString(), dueAt: new Date(Math.max(now, meeting - lead * 60000)).toISOString(), status: 'pending', createdAt: new Date(now).toISOString() };
+  const reminder = { id: crypto.randomUUID(), title, meetingAt: new Date(meeting).toISOString(), dueAt: new Date(Math.max(now, meeting - lead * 60000)).toISOString(), status: 'pending', createdAt: new Date(now).toISOString() };
+  if(input.repeatDays != null) {
+    const date = new Date(meeting);
+    reminder.repeat = validateRepeat({days:input.repeatDays,hour:date.getHours(),minute:date.getMinutes(),leadMinutes:lead});
+    if(!reminder.repeat.days.includes(date.getDay())) throw new Error('首次会议日期需要属于所选的重复星期');
+    reminder.seriesId = reminder.id;
+  }
+  return reminder;
 }
 
 function dueIds(reminders, now = Date.now()) {

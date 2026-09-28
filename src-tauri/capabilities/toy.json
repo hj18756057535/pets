@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "toy",
+  "description": "The local toy overlay only listens for its rendering mode; application commands are restricted in Rust.",
+  "windows": ["toy"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

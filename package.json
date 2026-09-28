@@ -4,16 +4,19 @@
   "private": true,
   "license": "MIT",
   "description": "本地优先的 Windows 桌面宠物与会议提醒",
-  "main": "src/main.cjs",
   "scripts": {
-    "start": "node tools/run.cjs",
-    "test": "node --test test/*.test.cjs",
-    "smoke": "node tools/run.cjs --smoke-test",
+    "start": "tauri dev",
+    "test": "node tools/prepare-tauri.cjs && node --test test/*.test.cjs && cargo test --manifest-path src-tauri/Cargo.toml --locked",
+    "smoke": "node tools/smoke-tauri.cjs",
     "import-pet": "node tools/import-pet.cjs",
-    "package": "node tools/package.cjs"
+    "package": "node tools/package-tauri.cjs",
+    "tauri:prepare": "node tools/prepare-tauri.cjs",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:package": "node tools/package-tauri.cjs"
   },
   "devDependencies": {
-    "electron": "44.4.3"
+    "@tauri-apps/cli": "^2.11.5"
   },
   "dependencies": {
     "yauzl": "3.4.0"

@@ -10,6 +10,10 @@ pet-preview.png
 
 # Build outputs and downloaded pet packs
 dist/
+dist-tauri/
+src-tauri/target/
+src-tauri/icons/
+src-tauri/gen/
 out/
 coverage/
 *.codex-pet.zip

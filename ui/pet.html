@@ -1,11 +1,10 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'"><title>PetDesk</title><link rel="stylesheet" href="pet.css"><link rel="stylesheet" href="dock.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'"><title>PetDesk</title><link rel="stylesheet" href="pet.css"></head>
 <body>
-  <button id="edge-tab" data-interactive title="展开桌宠" aria-label="从屏幕侧边展开桌宠" hidden><canvas id="edge-face" width="192" height="208"></canvas><span id="edge-arrow">‹</span><span id="edge-count" hidden></span></button>
   <div class="stage">
     <div id="bubble" class="bubble" data-interactive hidden><div class="bubble-label">有件事要告诉你 <span id="bubble-count"></span></div><strong id="bubble-title"></strong><div id="bubble-time"></div><div class="bubble-actions"><button id="ack">知道啦</button><button id="snooze">5 分钟后</button><button id="all" aria-label="查看所有提醒">↗</button></div></div>
-    <canvas id="pet" aria-label="拖动到屏幕左右侧边收起，点击挥手，双击打开陪伴空间"></canvas>
+    <canvas id="pet" aria-label="拖动调整位置，点击挥手，双击打开陪伴空间"></canvas>
   </div>
   <script type="module" src="pet.js"></script>
 </body></html>

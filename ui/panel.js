@@ -9,8 +9,26 @@ function tab(name) {
   if (!['home', 'reminders', 'settings'].includes(name)) name = 'home';
   document.querySelectorAll('.page').forEach(el => { el.hidden = el.id !== name; });
   document.querySelectorAll('.nav').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
+  if (name === 'settings') void refreshMemory();
   $('page-title').textContent = { home: '今天，也一起好好工作。', reminders: '重要的事，有我记着。', settings: '舒服的陪伴，刚刚好。' }[name];
 }
+let memoryBusy = false;
+const memorySize = bytes => (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+async function refreshMemory(trim = false) {
+  if (memoryBusy) return;
+  memoryBusy = true; $('memory-refresh').disabled = true; $('memory-trim').disabled = true;
+  try {
+    const value = await (trim ? api.trimMemory() : api.memoryInfo());
+    $('memory-percent').textContent = value.percent + '%'; $('memory-meter').value = value.percent;
+    $('memory-summary').textContent = '已用 ' + memorySize(value.used) + ' / 总计 ' + memorySize(value.total) + ' · 可用 ' + memorySize(value.available);
+    $('memory-app').textContent = '桌宠及界面进程约 ' + Math.round(value.appWorkingSet / 1024 / 1024) + ' MB（进程汇总，含共享内存）';
+    if (trim) $('memory-result').textContent = '已整理 ' + value.trimmed + ' 个桌宠进程，本次工作集减少约 ' + Math.round(value.reducedWorkingSet / 1024 / 1024) + ' MB；再次使用时可能回升。';
+  } catch (error) { $('memory-result').textContent = error.message; }
+  finally { memoryBusy = false; $('memory-refresh').disabled = false; $('memory-trim').disabled = false; }
+}
+$('memory-refresh').addEventListener('click', () => refreshMemory());
+$('memory-trim').addEventListener('click', () => refreshMemory(true));
+setInterval(() => { if (!document.hidden && !$('settings').hidden) void refreshMemory(); }, 5000);
 function dateText(value) { return formatTime(value); }
 function openReminders() { return state.reminders.filter(r => r.status !== 'done').sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || Date.parse(a.dueAt) - Date.parse(b.dueAt)); }
 function empty(text, icon = true) {
@@ -25,8 +43,10 @@ function item(reminder) {
   const badge = document.createElement('span'); badge.className = `status-badge ${reminder.status}`; badge.textContent = { pending: '待提醒', active: '待确认', done: '已结束' }[reminder.status]; heading.append(title, badge);
   const date = document.createElement('p'); date.className = 'item-date'; date.textContent = `${dateText(reminder.meetingAt)} 开始`;
   const due = document.createElement('p'); due.className = 'item-date'; due.textContent = `${dateText(reminder.dueAt)} 提醒`;
+  if (reminder.repeat) due.textContent += ` · 每周${reminder.repeat.days.map(d=>'日一二三四五六'[d]).join('、')}`;
   const buttons = document.createElement('div'); buttons.className = 'item-actions';
   const options = reminder.status === 'active' ? [['done', '我知道了'], ['snooze', '5 分钟后再叫我']] : reminder.status === 'pending' ? [['done', '取消提醒']] : [['remove', '移除记录']];
+  if (reminder.repeat && reminder.status === 'pending') options.splice(0,options.length,['stop-series','停止后续重复']);
   for (const [action, text] of options) {
     const button = document.createElement('button'); button.textContent = text; button.dataset.reminderAction = action;
     if (action === 'remove' || reminder.status === 'pending') button.className = 'muted';
@@ -36,6 +56,10 @@ function item(reminder) {
   row.append(heading, date, due, buttons); return row;
 }
 function render() {
+  const modes = { wand: '移动鼠标挥动逗猫棒', place: '点击桌面选择球的位置', fetch: '正在跑向小球', return: '正在把球叼回原位', follow: '正在跟随鼠标' };
+  $('play-status').textContent = state.interaction ? modes[state.interaction] + ' · Esc 结束互动' : '逗猫棒随鼠标移动；放球后小伙伴会叼回原位。Esc 结束互动。';
+  $('stop-play').hidden = !state.interaction;
+  document.querySelectorAll('[data-interaction]').forEach(button => { button.disabled = !state.pet; button.setAttribute('aria-pressed', String(state.interaction === button.dataset.interaction)); });
   const open = openReminders(); const done = state.reminders.filter(r => r.status === 'done');
   $('pet-name').textContent = state.pet?.name || '还没有小伙伴';
   $('preview').hidden = !state.pet; $('no-pet').hidden = !!state.pet;
@@ -69,6 +93,7 @@ function render() {
   $('home-inbox').replaceChildren(...(active.length ? active.slice(0, 2).map(item) : [empty('一切都好，目前没有需要确认的提醒。', false)]));
   const visible = filter === 'done' ? [...done].reverse() : open;
   $('list-count').textContent = `${visible.length} 条`;
+  $('clear-history').hidden = filter !== 'done'; $('clear-history').disabled = !done.length;
   $('reminder-list').replaceChildren(...(visible.length ? visible.map(item) : [empty(filter === 'done' ? '结束的提醒会留在这里。' : '还没有安排，添加第一条提醒吧。')]));
 }
 function fillTime(date) { $('meeting-date').value = dateValue(date); $('meeting-time').value = timeValue(date); updateTimePreview(); }
@@ -87,6 +112,9 @@ $('parse-reminder').addEventListener('click', parseQuick);
 $('quick-reminder').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); parseQuick(); } });
 document.querySelectorAll('[data-template]').forEach(b => b.addEventListener('click', () => { $('quick-reminder').value = b.dataset.template; $('quick-reminder').focus(); $('quick-error').textContent = '可修改时间和事项，再点击“填入表单”。今天 / 周几已过的时间不会自动顺延。'; }));
 $('pet-website').addEventListener('click', () => run(() => api.openPetWebsite()));
+$('meeting-repeat').addEventListener('change', () => { $('repeat-days').hidden = $('meeting-repeat').value !== 'weekly'; $('repeat-note').hidden = $('meeting-repeat').value === 'once'; });
+function repeatDays() { const mode=$('meeting-repeat').value; return mode==='once' ? null : mode==='daily' ? [0,1,2,3,4,5,6] : mode==='weekdays' ? [1,2,3,4,5] : Array.from(document.querySelectorAll('#repeat-days input:checked'),el=>Number(el.value)); }
+$('clear-history').addEventListener('click', () => run(async () => { await api.clearReminderHistory(); toast('已清除已结束记录，未来会议已保留。'); }));
 document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => tab(button.dataset.tab)));
 document.querySelector('.brand').addEventListener('click', e => { e.preventDefault(); tab('home'); });
 document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { filter = button.dataset.filter; document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('selected', b === button)); render(); }));
@@ -102,12 +130,13 @@ for (const [id, key] of [['setting-quiet', 'quiet'], ['setting-sound', 'sound'],
 $('setting-scale').addEventListener('change', () => run(() => api.settings({ scale: Number($('setting-scale').value) })));
 $('show-pet').addEventListener('click', () => run(() => state.pet ? api.showPet() : openImport()));
 $('import-pet').addEventListener('click', openImport);
-$('dock-pet').addEventListener('click', () => run(async () => { await api.dockPet(); toast('已收起到侧边，点击侧边小按钮即可展开。'); }));
 $('hide-pet').addEventListener('click', () => run(async () => { await api.hidePet(); toast('桌宠已隐藏，提醒仍会保留在列表中。'); }));
+document.querySelectorAll('[data-interaction]').forEach(button => button.addEventListener('click', () => run(() => api.interaction(button.dataset.interaction))));
+$('stop-play').addEventListener('click', () => run(() => api.interaction('stop')));
 $('quit').addEventListener('click', () => api.quit());
 $('reminder-form').addEventListener('submit', async e => {
   e.preventDefault(); $('form-error').textContent = ''; $('save-reminder').disabled = true;
-  try { const time = selectedTime(); if (!Number.isFinite(time.getTime())) throw new Error('请选择正确的会议时间'); await api.addReminder({ title: $('meeting-title').value, meetingAt: time.toISOString(), leadMinutes: Number($('meeting-lead').value) }); $('meeting-title').value = ''; $('quick-reminder').value = ''; toast('记住啦，到时间我来叫你。'); }
+  try { const time = selectedTime(); if (!Number.isFinite(time.getTime())) throw new Error('请选择正确的会议时间'); await api.addReminder({ title: $('meeting-title').value, meetingAt: time.toISOString(), leadMinutes: Number($('meeting-lead').value), repeatDays: repeatDays() }); $('meeting-title').value = ''; $('quick-reminder').value = ''; toast('记住啦，到时间我来叫你。'); }
   catch (error) { $('form-error').textContent = error.message; }
   finally { $('save-reminder').disabled = false; }
 });
@@ -116,7 +145,7 @@ $('test-reminder').addEventListener('click', () => run(async () => {
   try { await api.addReminder({ title: '和小伙伴的第一次提醒', meetingAt: new Date(Date.now() + 10000).toISOString(), leadMinutes: 0 }); toast('已安排，10 秒后见。'); }
   finally { $('test-reminder').disabled = false; }
 }));
-api.onState(value => { state = value; render(); }); api.onTab(tab);
+api.onState(value => { state = value; render(); }); api.onTab(tab); api.onImport(openImport);
 let importCandidate = null, importSprite = null, importBusy = false, applying = false, importGeneration = 0;
 function importControls(busy) {
   importBusy = busy;
@@ -178,5 +207,9 @@ try {
   state = await api.init();
   if (state.image) { sprite = new Sprite($('preview'), state.image); await sprite.ready; }
   $('today').textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
-  setDefaultTime(); render(); tab(state.tab); window.__ready = true;
+  setDefaultTime(); render(); tab(state.tab);
+  const ready = await api.reportReady();
+  if (ready?.tab) tab(ready.tab);
+  if (ready?.openImport) openImport();
+  window.__ready = true;
 } catch (e) { $('warning').textContent = e.message; $('warning').hidden = false; }

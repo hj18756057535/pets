@@ -3,3 +3,16 @@
 /* Keep reminder text readable at every pet size. */
 .stage{width:320px;height:100%;transform:none}#pet{width:calc(144px * var(--pet-scale));height:calc(156px * var(--pet-scale));left:calc(160px - 72px * var(--pet-scale));top:168px}.bubble{left:10px;top:auto;bottom:calc(100% - 158px);width:300px;padding:14px 16px;border-radius:18px}.bubble:after{left:138px}.bubble-label{font-size:12px;color:#708069;margin-bottom:6px}.bubble strong{font-size:17px;line-height:1.45}.bubble-actions{gap:9px;margin-top:10px}.bubble-actions button{font-size:13px;padding:6px 10px}#bubble-time{font-size:12px;color:#71816b;margin-top:5px}button:focus-visible{outline:2px solid #719578;outline-offset:2px}
 .stage #pet{top:190px}.stage .bubble{bottom:calc(100% - 180px)}
+
+/* Keep the pet and reminder bubble inside the visible work area. */
+html body .stage #pet{left:var(--pet-left,68px);right:auto;top:var(--pet-top,190px)}
+body .stage .bubble{bottom:var(--bubble-above-bottom,auto)}
+body.bubble-below .stage .bubble{bottom:auto;top:var(--bubble-below-top)}
+body .stage .bubble:after{left:var(--tail-left,138px);right:auto}
+body.bubble-below .stage .bubble:after{bottom:auto;top:-6px;transform:rotate(225deg)}
+
+/* Avoid browser drag ghosts and hide bubbles while the native surface moves. */
+canvas{-webkit-user-drag:none}body.moving .bubble{display:none!important}
+
+/* A stable canvas offset prevents a one-frame side jump when releasing a drag. */
+.stage{width:640px}body .stage .bubble{left:var(--bubble-left,10px)}
