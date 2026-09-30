@@ -17,6 +17,7 @@
     return () => { active = false; unlisten?.(); };
   };
   window.petdesk = {
+    openMaskdesk: () => call('open-maskdesk'),
     memoryInfo: () => call('memory-info'),
     trimMemory: () => call('memory-trim'),
     openPetMenu: () => call('pet-menu'),

@@ -5,6 +5,7 @@ const $ = id => document.getElementById(id);
 let state, sprite, filter = 'open', toastTimer;
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500); }
 async function run(operation) { try { return await operation(); } catch (e) { toast(e.message); } }
+$('open-maskdesk').addEventListener('click', () => run(() => api.openMaskdesk()));
 function tab(name) {
   if (!['home', 'reminders', 'settings'].includes(name)) name = 'home';
   document.querySelectorAll('.page').forEach(el => { el.hidden = el.id !== name; });

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "maskdesk",
+  "description": "Local, isolated masking window with its own validated application command.",
+  "windows": ["maskdesk"],
+  "permissions": ["core:default"]
+}

@@ -18,6 +18,7 @@ const target = path.join(root, 'release', name);
 fs.mkdirSync(target, { recursive: true });
 fs.copyFileSync(binary, path.join(target, 'PetDesk.exe'));
 fs.copyFileSync(path.join(root, 'tools', 'desktop-shortcut.vbs'), path.join(target, '创建桌面快捷方式.vbs'));
+fs.copyFileSync(path.join(root, 'tools', 'start-maskdesk.vbs'), path.join(target, '启动本地脱敏.vbs'));
 fs.writeFileSync(path.join(target, '使用说明.txt'), '\uFEFF' + [
   'PetDesk · Tauri Windows 便携版', '',
   '1. 将 ZIP 完整解压到当前用户可写的文件夹，双击 PetDesk.exe。',
@@ -25,7 +26,9 @@ fs.writeFileSync(path.join(target, '使用说明.txt'), '\uFEFF' + [
   '3. 首次打开后，通过界面导入 Codex 宠物 ZIP 或分享链接。',
   '4. 升级旧版时，先退出旧版，再将旧版 .data 文件夹复制到本 EXE 同目录。',
   '5. 设置和提醒保存在 EXE 同目录的 .data 文件夹，切勿随发布包分享。',
-  '6. 退出请使用托盘菜单或设置中的“退出软件”。'
+  '6. 退出请使用托盘菜单或设置中的“退出软件”。',
+  '7. 双击“启动本地脱敏.vbs”可独立打开脱敏工具，也可从桌宠右键、托盘或陪伴空间进入。',
+  '8. 脱敏支持文本关键词替换、Excel/UTF-8 CSV 整列处理，导出当前工作表的文本值副本，不覆盖原文件。'
 ].join('\r\n'), 'utf8');
 const archive = `${target}.zip`;
 const zipped = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory($env:PETDESK_PACKAGE_DIR, $env:PETDESK_PACKAGE_ZIP, [System.IO.Compression.CompressionLevel]::Optimal, $true)"], { windowsHide: true, stdio: 'inherit', env: { ...process.env, PETDESK_PACKAGE_DIR: target, PETDESK_PACKAGE_ZIP: archive } });

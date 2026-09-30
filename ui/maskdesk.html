@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>本地脱敏 · PetDesk</title><link rel="stylesheet" href="maskdesk.css">
+</head>
+<body>
+  <main>
+    <header><div><p class="eyebrow">PETDESK / LOCAL TOOLS</p><h1>分享之前，留一点隐私。</h1><p>把关键词和表格数据处理好，再交给 AI。</p></div><span class="local-badge">● 全程本地处理</span></header>
+    <fieldset id="workspace">
+      <div class="toolbar"><nav aria-label="脱敏方式"><button id="text-tab" class="tab active" aria-pressed="true">文本替换</button><button id="sheet-tab" class="tab" aria-pressed="false">表格整列脱敏</button><button id="restore-tab" class="tab" aria-pressed="false">AI 结果还原</button></nav><button id="clear-session" class="quiet">清空本次会话</button></div>
+      <div class="card mode-bar"><label class="checkbox"><input id="reversible" type="checkbox" checked><strong>可恢复关键词替换</strong></label><p id="mode-note" class="note">为关键词生成唯一占位符，忽略手填替换值。同一原值保持一致；文本和表格关键词规则均适用。星号掩码与固定值替换不可恢复。</p></div>
+      <section id="text-page">
+        <div class="card rule-library"><h2>关键词规则库</h2><p class="note">按客户、项目或用途组织关键词。保存后下次打开仍可加载，文本、Word、TXT 和表格共用。</p><div class="actions"><select id="rule-group-select" aria-label="已保存的规则组"><option value="">尚无保存的规则组</option></select><button id="load-rule-group" class="secondary">加载并替换当前规则</button><button id="merge-rule-group" class="secondary">合并到当前规则</button></div><div class="actions"><input id="rule-group-name" maxlength="80" placeholder="规则组名称，例如：项目 A / 客户资料" aria-label="新规则组名称"><button id="save-rule-group" class="secondary">保存为新规则组</button><button id="update-rule-group" class="quiet">更新所选组</button></div><p class="note">仅主动保存的关键词及普通替换值以明文存入本机应用数据目录；不保存原文、AI 回复或恢复映射。更新所选组会替换该组内容，清空会话不会删除规则库。</p></div>
+        <div class="section-heading"><div><h2>01 / 定义替换规则</h2><p>按字面精确匹配，区分大小写；长词优先，替换结果不会再次替换。</p></div><button id="add-keyword" class="secondary">＋ 添加关键词</button></div>
+        <div class="card"><div class="keyword-labels"><span>原关键词</span><span>替换为（普通模式，可留空）</span><span></span></div><div id="keyword-rules"></div><p class="note">公司名、姓名、项目名需自行添加关键词。可恢复模式自动生成 [[PD_…]] 占位符；关闭后使用右侧替换值。</p></div>
+        <div class="section-heading"><h2>02 / 预览脱敏结果</h2><button id="load-example" class="quiet">填入演示数据</button></div>
+        <div class="actions"><button id="open-document" class="secondary">导入 Word / TXT 并替换原文</button><span id="document-name" class="note">也可直接粘贴文本。</span></div><p class="note">支持 .docx、UTF-8 / 带 BOM 的 UTF-16 .txt，文件上限 20 MiB，提取文字上限 2 MiB。Word 提取正文、表格文字及页眉页脚、脚注尾注；表格转文字，不保留排版、图片、批注和删除的修订，不识别图片内文字。请检查提取结果。</p>
+        <div class="text-grid"><label class="card editor">原始文本<textarea id="source-text" placeholder="粘贴准备发给 AI 的文本，或导入 Word / TXT…" spellcheck="false" autocomplete="off"></textarea><span class="note">上限 2 MiB；原文不保存到历史。</span></label><label class="card editor">脱敏结果<textarea id="result-text" readonly placeholder="点击“生成预览”后显示结果" spellcheck="false"></textarea><span id="text-count" class="note">请先设置规则并预览。</span></label></div>
+        <div class="actions"><button id="detect-text" class="secondary">识别手机号 / 邮箱 / 身份证</button><span class="note">先审阅候选，再加入规则；识别可能有误报或遗漏。</span></div>
+        <div id="text-detection" class="card detection" hidden><p id="text-detection-summary" class="note"></p><div id="text-candidates" class="candidate-list"></div><button id="apply-text-candidates" class="secondary">将勾选项加入关键词</button></div>
+        <div class="actions"><button id="preview-text" class="primary">生成文本预览</button><button id="copy-text" class="secondary" disabled>复制脱敏结果</button><span class="note">只处理已添加的关键词，请检查后再分享。</span></div><p id="text-mapping" class="mapping-note"></p>
+        <div class="actions"><select id="text-export-format" aria-label="文字导出格式"><option value="txt">TXT（UTF-8）</option><option value="docx">Word（纯文字 DOCX）</option></select><button id="export-text" class="secondary" disabled>导出预览为新文件</button><span class="note">原文件名＋脱敏＋时间；Word 重新生成纯文字文档，不保留原排版或附件。</span></div>
+      </section>
+      <section id="sheet-page" hidden>
+        <div class="section-heading"><div><h2>01 / 选择表格</h2><p>支持 .xlsx、UTF-8 .csv，最大 20 MiB。源文件只读。</p></div><button id="open-file" class="primary">选择 Excel / CSV</button></div>
+        <div id="file-empty" class="empty card"><span class="empty-icon">▤</span><h3>给数据打个码，再放心分享。</h3><p>选择工作表 → 设置列规则 → 对照预览 → 导出副本</p></div>
+        <div id="file-workspace" hidden>
+          <div class="card file-info"><div><strong id="file-name"></strong><p id="file-info" class="note"></p></div><label>工作表 <select id="sheet-select" aria-label="工作表"></select></label><label class="checkbox"><input id="has-header" type="checkbox" checked>当前数据首行是表头（保留）</label></div>
+          <div class="section-heading"><div><h2>02 / 按列设置规则</h2><p>可为每列选择不同规则。保留首尾按字符计数，中间固定为 ****。</p></div><button id="detect-sheet" class="secondary">识别表内敏感格式</button></div>
+          <div id="sheet-detection" class="card detection" hidden><p id="sheet-detection-summary" class="note"></p><div id="sheet-candidates" class="candidate-list"></div><button id="apply-sheet-candidates" class="secondary">加入关键词并设置所在列</button><p class="note">确认后，候选所在列会勾选并改为“关键词替换”；这些列应用文本页全部关键词。</p></div>
+          <div class="card column-card"><div id="column-rules"></div><p class="note">短值不足以保留指定首尾时整项变成 ****；空单元格保持为空。关键词替换使用“文本替换”页中的规则。</p></div>
+          <div class="actions"><button id="preview-sheet" class="primary">生成表格预览</button><span id="sheet-count" class="note">选择要脱敏的列，然后生成预览。</span></div><p id="sheet-mapping" class="mapping-note"></p>
+          <div class="section-heading"><h2>03 / 对照检查</h2><span class="note">仅展示前 20 行，导出处理整张工作表。</span></div>
+          <div class="preview-grid"><div class="card preview-card"><h3>原始数据</h3><div id="before-table" class="table-scroll" tabindex="0" aria-label="原始数据预览"></div></div><div class="card preview-card"><h3>脱敏结果 <span class="change-key">绿色表示已修改</span></h3><div id="after-table" class="table-scroll" tabindex="0" aria-label="脱敏结果预览"><p class="note">生成预览后显示。</p></div></div></div>
+          <div class="export-note"><strong>导出范围：仅当前工作表的文本值</strong><p>未选择的列和保留的表头仍包含原值，请逐项检查。导出不带其他工作表、格式、公式、批注、图片或宏；公式使用文件中的缓存值，不重新计算。日期转为 ISO 文本，数字格式补零不保留。</p></div>
+          <div class="actions"><button id="export-sheet" class="primary" disabled>导出新的 .xlsx</button><span class="note">请使用新的文件名，不覆盖原文件或已有文件。</span></div>
+        </div>
+      </section>
+      <section id="restore-page" hidden>
+        <div class="section-heading"><div><h2>01 / 选择对应的映射</h2><p>每次可恢复预览独立保存，同一次预览中的重复原值使用相同占位符。</p></div></div>
+        <div class="card"><label for="mapping-select">本次会话的映射 <span id="mapping-total" class="note">0 份</span></label><select id="mapping-select" class="mapping-select"><option value="">尚无映射，请先生成可恢复预览或导入</option></select><p class="mapping-note">映射默认仅在内存中，关闭或清空会话会丢失。AI 稍后才返回时，请先加密保存。映射与密码留在本机，不要一起发给 AI。</p></div>
+        <details class="card mapping-storage"><summary>跨会话使用：加密保存 / 导入映射</summary><div class="password-row"><label>映射密码<input id="mapping-password" type="password" autocomplete="off" placeholder="至少 10 个字符"></label><label>确认密码（仅保存时）<input id="mapping-password-confirm" type="password" autocomplete="off" placeholder="再次输入"></label></div><div class="actions"><button id="save-mapping" class="secondary" disabled>加密保存所选映射</button><button id="load-mapping" class="secondary">选择加密映射并导入</button></div><p class="note">密码不会保存。忘记密码无法恢复映射；文件被修改或密码不符时拒绝导入。只创建新文件，不覆盖已有文件。</p></details>
+        <div class="section-heading"><h2>02 / 粘贴 AI 返回结果</h2><button id="copy-token-instruction" class="quiet">复制给 AI 的占位符说明</button></div>
+        <p class="note">要求 AI 保持 [[PD_…]] 占位符原样。只还原精确匹配的占位符；改写、删除或推断出的称呼不会被猜测还原。</p>
+        <div class="text-grid"><label class="card editor">AI 分析结果<textarea id="ai-response" placeholder="粘贴包含占位符的 AI 返回文本或 Markdown 表格…" spellcheck="false" autocomplete="off"></textarea><span class="note">上限 2 MiB。</span></label><label class="card editor">还原后的结果<textarea id="restored-text" readonly placeholder="选择映射后点击“还原预览”" spellcheck="false"></textarea><span id="restore-count" class="note">还原结果包含原始敏感信息，仅在本机显示。</span></label></div>
+        <div class="actions"><button id="restore-result" class="primary" disabled>还原预览</button><button id="copy-restored" class="secondary" disabled>复制还原结果</button></div>
+      </section>
+    </fieldset>
+    <p id="status" role="status" aria-live="polite"></p>
+    <footer>无需账号 · 不上传数据 · 关闭窗口即退出工具<p>清空或关闭会丢失未保存映射；主动复制的结果仍留在系统剪贴板。</p></footer>
+  </main>
+  <dialog id="clear-dialog"><h2>清空会话及全部本地映射？</h2><p>未加密保存的映射会丢失，之后无法还原对应的 AI 结果。</p><div class="actions"><button id="cancel-clear" class="secondary">先保留</button><button id="confirm-clear" class="primary">清空会话与映射</button></div></dialog>
+  <script type="module" src="maskdesk.js"></script>
+</body>
+</html>

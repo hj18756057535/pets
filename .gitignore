@@ -5,6 +5,8 @@ node_modules/
 .local-pets/
 release/
 artifacts/
+.playwright-cli/
+output/playwright/
 pet-preview.png
 *.log
 
@@ -31,6 +33,7 @@ coverage/
 *.key
 *.pfx
 *.p12
+*.pdmap
 .codex/
 .agents/
 .idea/

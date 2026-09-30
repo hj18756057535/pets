@@ -8,6 +8,8 @@
     "start": "tauri dev",
     "test": "node tools/prepare-tauri.cjs && node --test test/*.test.cjs && cargo test --manifest-path src-tauri/Cargo.toml --locked",
     "smoke": "node tools/smoke-tauri.cjs",
+    "smoke:maskdesk": "node tools/smoke-maskdesk.cjs",
+    "maskdesk": "node tools/start-maskdesk.cjs",
     "import-pet": "node tools/import-pet.cjs",
     "package": "node tools/package-tauri.cjs",
     "tauri:prepare": "node tools/prepare-tauri.cjs",

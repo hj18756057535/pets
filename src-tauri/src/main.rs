@@ -4,6 +4,12 @@ mod model;
 mod memory;
 mod interaction;
 mod pets;
+mod masking;
+mod pii;
+mod recovery;
+mod maskdesk;
+mod mask_documents;
+mod keyword_library;
 
 use chrono::{ DateTime, Duration, Utc };
 use model::{ EyeBreak, Point, Store };
@@ -470,6 +476,10 @@ async fn petdesk_call(
     }
     let backend = app.state::<Mutex<Backend>>();
     match channel.as_str() {
+        "open-maskdesk" if window.label() == "panel" || window.label() == "pet" => {
+            maskdesk::launch()?;
+            Ok(Value::Null)
+        }
         "memory-info" | "memory-trim" if window.label() == "panel" => {
             let trim = channel == "memory-trim";
             tauri::async_runtime::spawn_blocking(move || memory::inspect(trim)).await.map_err(|e| e.to_string())?
@@ -920,6 +930,13 @@ async fn petdesk_call(
 
 fn menu_action(app: &tauri::AppHandle, action: &str) {
     match action {
+        "maskdesk" => {
+            if let Err(error) = maskdesk::launch() {
+                app.state::<Mutex<Backend>>().lock().unwrap().warning = error;
+                panel(app, "home");
+                broadcast(app);
+            }
+        }
         "open" => panel(app, "home"),
         "reminders" => panel(app, "reminders"),
         "settings" | "memory" => panel(app, "settings"),
@@ -1054,6 +1071,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let menu = MenuBuilder::new(handle)
         .text("open", "打开陪伴空间")
         .text("reminders", "添加会议提醒")
+        .text("maskdesk", "本地数据脱敏")
         .text("settings", "偏好设置")
         .text("memory", "查看系统内存")
         .text("change-pet", "更换宠物")
@@ -1106,6 +1124,10 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 fn main() {
+    if std::env::args().any(|arg| arg == "--maskdesk") {
+        maskdesk::run();
+        return;
+    }
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |error| {
         startup_stage(&format!("fatal: {error}"));
