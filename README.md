@@ -1,12 +1,36 @@
 # PetDesk
 
-一个本地优先的 Windows 桌面宠物与会议提醒工具。当前为 **0.1 自用预览版**，先验证稳定性，再逐步增加软件连接与鼠标主题。
+一个本地优先的 Windows 桌面宠物、会议提醒与数据脱敏工具。让小伙伴陪你工作，也让交给 AI 的资料先经过本地处理。当前为 **0.1 自用预览版**。
+
+**[下载 Windows 便携版](https://github.com/hj18756057535/pets/releases/download/v0.1.0-preview.20261001/PetDesk-0.1.0-windows-x64-tauri-portable-1790869400611.zip)** · **[下载安装包](https://github.com/hj18756057535/pets/releases/download/v0.1.0-preview.20261001/PetDesk-0.1.0-windows-x64-tauri-setup-1790869401900.exe)** · [所有发布与校验文件](https://github.com/hj18756057535/pets/releases) · [项目反馈、迭代复盘与分享稿](docs/项目复盘与分享.md)
+
+Windows x64 · 使用者无需 Node.js / Rust · 本地保存 · MIT 开源客户端
+
+## Demo 1：桌面陪伴与会议提醒
+
+![PetDesk 陪伴空间、会议提醒与桌面悬浮宠物](docs/media/petdesk-companion.jpg)
+
+下载并解压便携包 → 双击 `PetDesk.exe` → 导入宠物 → 拖到喜欢的位置。单击挥手，双击打开陪伴空间，右键可玩逗猫棒、放球取回或跟随鼠标；按 Esc 结束互动。在“会议提醒”里点击“体验一次提醒”，10 秒后体验桌宠气泡。
+
+## Demo 2：桌宠互动与会议提醒录屏
+
+[![桌宠互动与会议提醒动态演示，点击观看原始 MP4](docs/media/petdesk-demo.gif)](docs/media/petdesk-demo.mp4)
+
+[观看 MP4 使用演示](docs/media/petdesk-demo.mp4) · [下载原始录屏](https://raw.githubusercontent.com/hj18756057535/pets/main/docs/media/petdesk-demo.mp4)
+
+约 34 秒，展示陪伴空间、宠物动作和会议提醒操作。上方 GIF 为压缩预览，原始 MP4 保留完整画面与音轨。
+
+### 再试试本地数据脱敏
+
+**本地脱敏快速体验：** 从桌宠右键或陪伴空间打开“本地数据脱敏”，添加虚构的客户名、项目名作为关键词，生成可恢复预览；将保留占位符的 AI 示例回复粘贴到“AI 结果还原”，选择对应映射即可恢复原词。关键词可保存成组复用，也可导入 Word/TXT 或选择 Excel/CSV 的指定列处理。操作前先预览，导出生成新文件。
+
+当前 Word 输出为纯文字 DOCX，不保留原排版和图片；映射文件留在本机，不与脱敏文本一起发给 AI。详细能力与限制见下方“本地数据脱敏”。
 
 ## 普通用户：下载后双击使用
 
 **不需要安装 Node.js、npm，也不需要输入命令。**
 
-1. 在本仓库的 **Releases** 页面下载 `PetDesk-…-windows-…-portable-….zip` 附件（发布后提供），不要下载 `Source code`。
+1. 在本仓库的 [Releases](https://github.com/hj18756057535/pets/releases) 页面下载 `PetDesk-…-windows-…-portable-….zip` 附件，不要下载 `Source code`。
 2. 将整个 ZIP 解压到自己的文件夹，双击 **PetDesk.exe**。
 3. 首次启动点击“导入宠物”，界面中有 [Codex Pets](https://codex-pets.net/) 下载入口和操作说明。
 4. 想在桌面启动：右键 EXE 创建快捷方式，或双击随包提供的 `创建桌面快捷方式.vbs`。
