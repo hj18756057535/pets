@@ -2,7 +2,9 @@
 
 一个本地优先的 Windows 桌面宠物、会议提醒与数据脱敏工具。让小伙伴陪你工作，也让交给 AI 的资料先经过本地处理。当前为 **0.1 自用预览版**。
 
-**[下载 Windows 便携版](https://github.com/hj18756057535/pets/releases/download/v0.1.0-preview.20261001/PetDesk-0.1.0-windows-x64-tauri-portable-1790869400611.zip)** · **[下载安装包](https://github.com/hj18756057535/pets/releases/download/v0.1.0-preview.20261001/PetDesk-0.1.0-windows-x64-tauri-setup-1790869401900.exe)** · [所有发布与校验文件](https://github.com/hj18756057535/pets/releases) · [项目反馈、迭代复盘与分享稿](docs/项目复盘与分享.md)
+**[下载 Windows 便携版](https://github.com/hj18756057535/pets/releases/download/v0.1.0-preview.20261007/PetDesk-0.1.0-windows-x64-tauri-portable-1791384204654.zip)** · **[下载安装包](https://github.com/hj18756057535/pets/releases/download/v0.1.0-preview.20261007/PetDesk-0.1.0-windows-x64-tauri-setup-1791384207287.exe)** · [所有发布与校验文件](https://github.com/hj18756057535/pets/releases) · [项目反馈、迭代复盘与分享稿](docs/项目复盘与分享.md)
+
+最新预览发布：**2026-10-07**，新增签到、陪伴日历、情绪表达与节日提醒，改进逗猫棒互动。详见 [本次发布说明](docs/发布说明-2026-10-07.md)。
 
 Windows x64 · 使用者无需 Node.js / Rust · 本地保存 · MIT 开源客户端
 
