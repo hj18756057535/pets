@@ -1,8 +1,23 @@
 import { formatTime } from './reminder-time.mjs';
 import { Sprite } from './sprite.js';
+import { mood } from './companion.mjs';
 const api = window.petdesk; const canvas = document.getElementById('pet');
 let moving = false;
 let state, sprite, current, pointerDown = null, dragged = false;
+let moodBubble = null, moodAt = Date.now(), moodExpires = 0, moodVariation = 0, lastMoodTick = Date.now();
+setInterval(() => {
+  const now = Date.now(), resumed = now - lastMoodTick > 15000; lastMoodTick = now;
+  if (!state) return;
+  if (resumed || state.settings.quiet || !state.companion.moodEnabled || !state.petVisible || moving || pointerDown || state.interaction || state.eyeReminder || state.reminders.some(r => r.status === 'active')) {
+    moodAt = now; if (moodBubble) { moodBubble = null; render(); } return;
+  }
+  if (moodBubble && now >= moodExpires) { moodBubble = null; render(); }
+  if (now - moodAt >= state.companion.moodMinutes * 60000) {
+    const feeling = mood(state.companion, new Date(), moodVariation++);
+    moodBubble = {kind:'mood', title:feeling.lines, hint:`心情 · ${feeling.name}`, action:feeling.action};
+    moodExpires = now + 9000; moodAt = now; render();
+  }
+}, 1000);
 function layout(value) {
   if (!value) return;
   const root = document.documentElement;
@@ -20,19 +35,22 @@ function render() {
   document.documentElement.style.setProperty('--pet-scale', state.settings.scale);
   const active = state.reminders.filter(r => r.status === 'active').sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
   const rest = state.eyeReminder;
-  current = active[0] || (rest ? { ...rest, kind: 'eye' } : null);
+  if (active.length || rest || state.settings.quiet || !state.companion.moodEnabled || state.interaction) moodBubble = null;
+  current = active[0] || (rest ? { ...rest, kind: 'eye' } : moodBubble);
   const total = active.length + (rest ? 1 : 0);
   document.getElementById('bubble').hidden = moving || !!state.interaction || !current || state.settings.quiet;
   if (current) {
     const eye = current.kind === 'eye';
-    document.querySelector('.bubble-label').firstChild.nodeValue = eye ? '小伙伴喊你歇一会儿 ' : '有件事要告诉你 ';
-    document.getElementById('bubble-time').textContent = eye ? current.hint : formatTime(current.meetingAt) + ' 开始';
+    const emotion = current.kind === 'mood';
+    document.getElementById('snooze').hidden = emotion;
+    document.querySelector('.bubble-label').firstChild.nodeValue = emotion ? '小伙伴的心情 ' : eye ? '小伙伴喊你歇一会儿 ' : '有件事要告诉你 ';
+    document.getElementById('bubble-time').textContent = eye || emotion ? current.hint : formatTime(current.meetingAt) + ' 开始';
     document.getElementById('bubble-title').textContent = current.title;
     document.getElementById('bubble-count').textContent = total > 1 ? `${total} 条` : '';
     document.getElementById('ack').textContent = eye ? '去歇会儿' : '知道啦';
     document.getElementById('all').setAttribute('aria-label', eye ? '护眼提醒设置' : '查看所有提醒');
   }
-  if (sprite) { sprite.reduced = state.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches; if (!moving) sprite.play(current && !state.settings.quiet ? 'waiting' : 'idle'); }
+  if (sprite) { sprite.reduced = state.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches; if (!moving) sprite.play(current && !state.settings.quiet ? current.action || 'waiting' : 'idle'); }
 }
 function hit(point) {
   if (pointerDown) return;
@@ -58,9 +76,10 @@ window.addEventListener('blur', () => release());
 document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
 canvas.addEventListener('dblclick', () => api.showPanel('home'));
 document.addEventListener('contextmenu', e => { e.preventDefault(); api.openPetMenu().catch(() => api.showPanel('home')); });
-document.getElementById('all').addEventListener('click', () => api.showPanel(current?.kind === 'eye' ? 'settings' : 'reminders'));
+document.getElementById('all').addEventListener('click', () => api.showPanel(current?.kind === 'mood' ? 'home' : current?.kind === 'eye' ? 'settings' : 'reminders'));
 for (const [id, action] of [['ack', 'done'], ['snooze', 'snooze']]) document.getElementById(id).addEventListener('click', async () => {
   if (!current) return;
+  if (current.kind === 'mood') { moodBubble = null; moodAt = Date.now(); render(); return; }
   const button = document.getElementById(id); button.disabled = true;
   try { if (current.kind === 'eye') await api.eyeBreakAction(action); else await api.reminderAction({ id: current.id, action }); } catch { api.showPanel('settings'); } finally { button.disabled = false; }
 });

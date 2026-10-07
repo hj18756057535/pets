@@ -22,6 +22,7 @@
     <header><div><div class="eyebrow" id="today"></div><h1 id="page-title">今天，也一起好好工作。</h1></div><button id="quiet-top" class="quiet-button">☾ <span>免打扰</span></button></header>
     <div id="warning" class="warning" role="alert" hidden></div>
     <section id="home" class="page">
+      <article class="spark-card"><div><strong id="spark-streak">🔥 0 天火花</strong><p id="spark-total"></p><span id="current-mood"></span></div><button id="check-in" class="primary">签到 · 续火花</button><button class="secondary" data-tab="reminders">查看日历</button></article>
       <div class="home-grid">
         <article class="pet-card">
           <div class="card-top"><span class="tag">我的桌面小伙伴</span><span class="online"><i></i>本地陪伴</span></div>
@@ -44,6 +45,12 @@
       <footer><span class="status-dot"></span>关闭这个窗口后，桌宠与提醒会继续运行。彻底退出请使用系统托盘菜单。</footer>
     </section>
     <section id="reminders" class="page" hidden>
+      <article class="calendar-card">
+        <div class="section-title"><h2>陪伴日历</h2><div><button id="calendar-prev" class="secondary" aria-label="上个月">←</button> <strong id="calendar-title"></strong> <button id="calendar-next" class="secondary" aria-label="下个月">→</button> <button id="calendar-today" class="text-button">今天</button></div></div>
+        <div class="calendar-week" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div id="calendar-grid" class="calendar-grid" aria-label="选择日期"></div>
+        <div class="section-title"><h3 id="calendar-selected"></h3><button id="calendar-add" class="secondary">在这天添加事项 ＋</button></div><div id="calendar-events" aria-live="polite"></div>
+        <p class="field-note">本地日历 · 节日日期不代表放假或调休安排。点击日期可添加生日、纪念日等个人事项。</p>
+      </article>
       <div class="reminder-layout">
         <article class="form-card"><div class="section-title"><h2>留一件事给我记着</h2><span class="small-symbol">＋</span></div><p class="helper">到时间，我会举起小纸条叫你。</p>
           <div class="quick-entry"><label for="quick-reminder">一句话安排</label><div class="quick-input"><input id="quick-reminder" placeholder="明天 09:30 项目碰头会" maxlength="160"><button id="parse-reminder" class="secondary">填入表单</button></div><div class="time-chips"><button data-template="今天下午3点项目会">今天下午 3 点…</button><button data-template="明天 09:30 晨会">明天 09:30…</button><button data-template="周三14点需求评审">周三 14 点…</button></div><p id="quick-error" class="form-error" role="alert"></p></div><form id="reminder-form"><label for="meeting-title">会议 / 事项名称</label><input id="meeting-title" maxlength="100" placeholder="例如：周一项目碰头会" required autocomplete="off">
@@ -59,6 +66,12 @@
       <footer>电脑关机或软件退出时无法提醒；重新打开或从休眠唤醒后，会显示尚未处理的到期事项。</footer>
     </section>
     <section id="settings" class="page" hidden>
+      <article class="settings-card"><h2>小伙伴的日常</h2>
+        <label class="setting-row"><span><strong>自动表达心情</strong><small>短暂显示情绪气泡，事项和护眼提醒优先；遵循免打扰。</small></span><input id="mood-enabled" class="toggle" type="checkbox"></label>
+        <form id="mood-form" class="eye-interval"><label for="mood-minutes">每隔</label><input id="mood-minutes" type="number" min="1" max="180" required><span>分钟说一句心情</span><button class="secondary">保存间隔</button></form>
+        <label class="setting-row"><span><strong>节日提醒</strong><small>元旦、情人节、妇女节、劳动节、儿童节、国庆节、圣诞节，当天 09:00 后提醒一次。暂不含农历节日和调休。</small></span><input id="holiday-enabled" class="toggle" type="checkbox"></label>
+        <p class="field-note">签到按本机日期计算；同一天记一次，连续次日签到续火花，漏签后从 1 天开始。节日当天晚些时候启动也会补发，跨日不补发。</p>
+      </article>
       <article class="settings-card" id="memory-card"><div class="section-title"><h2>系统内存</h2><span id="memory-percent" class="tag">读取中</span></div><progress id="memory-meter" max="100" value="0" aria-label="系统物理内存使用率"></progress><p id="memory-summary" role="status">正在读取系统内存…</p><p id="memory-app" class="field-note"></p><button id="memory-refresh" class="secondary">刷新</button> <button id="memory-trim" class="secondary">整理桌宠内存</button><p class="field-note">只整理桌宠和它的界面进程，不关闭软件、不清理其他应用。占用可能随着使用回升，不保证加速。页面显示期间每 5 秒刷新。</p><p id="memory-result" class="field-note" role="status"></p></article>
       <article class="settings-card" id="eye-settings">
         <div class="section-title"><h2>让眼睛也摸会儿鱼</h2><span class="tag">护眼提醒</span></div>

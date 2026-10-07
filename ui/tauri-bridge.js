@@ -17,6 +17,8 @@
     return () => { active = false; unlisten?.(); };
   };
   window.petdesk = {
+    checkIn: () => call('check-in'),
+    companionConfig: value => call('companion-config', value),
     openMaskdesk: () => call('open-maskdesk'),
     memoryInfo: () => call('memory-info'),
     trimMemory: () => call('memory-trim'),

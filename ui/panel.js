@@ -1,10 +1,15 @@
 import { dateValue, timeValue, nextHour, formatTime, manualTime, parseReminder } from './reminder-time.mjs';
 import { Sprite } from './sprite.js';
+import { setupCompanion, renderCompanion } from './companion-panel.js';
 const api = window.petdesk;
 const $ = id => document.getElementById(id);
 let state, sprite, filter = 'open', toastTimer;
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500); }
 async function run(operation) { try { return await operation(); } catch (e) { toast(e.message); } }
+setupCompanion(api, run, toast, day => {
+  tab('reminders'); $('meeting-date').value = day; $('meeting-time').value = '09:00';
+  updateTimePreview(); $('meeting-title').focus(); $('reminder-form').scrollIntoView({block:'center'});
+});
 $('open-maskdesk').addEventListener('click', () => run(() => api.openMaskdesk()));
 function tab(name) {
   if (!['home', 'reminders', 'settings'].includes(name)) name = 'home';
@@ -57,6 +62,7 @@ function item(reminder) {
   row.append(heading, date, due, buttons); return row;
 }
 function render() {
+  renderCompanion(state);
   const modes = { wand: '移动鼠标挥动逗猫棒', place: '点击桌面选择球的位置', fetch: '正在跑向小球', return: '正在把球叼回原位', follow: '正在跟随鼠标' };
   $('play-status').textContent = state.interaction ? modes[state.interaction] + ' · Esc 结束互动' : '逗猫棒随鼠标移动；放球后小伙伴会叼回原位。Esc 结束互动。';
   $('stop-play').hidden = !state.interaction;

@@ -14,15 +14,18 @@ async function main() {
   fs.mkdirSync(data, { recursive: true });
   fs.writeFileSync(path.join(data, 'state.json'), JSON.stringify({ version: 1, settings: { quiet: true }, position: null, dock: { side: "left", displayId: "primary", y: 200, centerRatio: 0.5 }, reminders: [] }));
   const launcher = process.argv.includes('--launcher');
+  const resume = process.argv.includes('--resume');
+  if (resume && launcher) throw new Error('--resume must launch the test executable directly');
   const executable = launcher ? 'cmd.exe' : path.join(root, 'src-tauri', 'target', 'debug', 'petdesk.exe');
   const args = launcher ? ['/d', '/c', path.join(root, '启动桌宠.cmd')] : [];
   const launchedAt = Date.now();
   let startupMs;
   const child = spawn(executable, args, {
     cwd: root, windowsHide: true,
-    env: { ...process.env, PETDESK_SMOKE: '1', PETDESK_DATA_DIR: data }
+    env: { ...process.env, PETDESK_SMOKE: '1', PETDESK_SMOKE_RESUME: resume ? '1' : '0', PETDESK_DATA_DIR: data }
   });
   let output = '', spawnError;
+  let suspended = false;
   child.on('error', error => { spawnError = error; });
   child.stdout.on('data', text => { output += text; });
   child.stderr.on('data', text => { output += text; });
@@ -31,7 +34,7 @@ async function main() {
     catch { return null; }
   };
   try {
-    const until = Date.now() + 45000;
+    const until = Date.now() + (resume ? 75000 : 45000);
     while (Date.now() < until) {
       if (spawnError) throw spawnError;
       if (startupMs === undefined) {
@@ -42,8 +45,15 @@ async function main() {
       }
       if (child.exitCode !== null && (!launcher || child.exitCode !== 0)) throw new Error(`App exited: ${child.exitCode}\n${output}`);
       const panel = read('panel'), pet = read('pet');
+      if (resume && !suspended && panel?.phase === 'resume-ready') {
+        run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+          path.join(root, 'tools', 'suspend-smoke-process.ps1'), '-TestProcessId', String(child.pid),
+          '-ExpectedPath', executable]);
+        suspended = true;
+      }
       if (panel?.ok === false || pet?.ok === false) throw new Error(JSON.stringify({ panel, pet }));
       if (panel?.ok && pet?.ok && pet.pet === 'Smoke second') {
+        if (resume && !suspended) throw new Error('Resume test never suspended the test process');
         if (launcher) {
           const pid = Number(fs.readFileSync(path.join(data, 'launcher.pid'), 'ascii').trim());
           let alive = false;

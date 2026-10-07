@@ -69,6 +69,8 @@ pub struct Reminder {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SavedState {
+    #[serde(default)]
+    pub companion: crate::companion::Companion,
     pub version: u32,
     pub settings: Settings,
     pub position: Option<Point>,
@@ -81,6 +83,7 @@ impl Default for SavedState {
     fn default() -> Self {
         Self {
             version: 1,
+            companion: crate::companion::Companion::default(),
             settings: Settings::default(),
             position: None,
             pet_position: None,
@@ -96,6 +99,9 @@ fn date(value: &str) -> Result<DateTime<Utc>, String> {
         .map_err(|_| "提醒时间格式无效".into())
 }
 fn validate(state: &SavedState) -> Result<(), String> {
+    if !(1..=180).contains(&state.companion.mood_minutes) {
+        return Err("情绪表达间隔应为 1～180 分钟".into());
+    }
     if state.version != 1 || state.reminders.len() > 500 {
         return Err("不支持的本地数据格式".into());
     }
@@ -339,6 +345,8 @@ mod tests {
         let mut store = Store::load(dir.clone()).unwrap();
         store.update(|s| { s.settings.scale = 0.45; Ok(()) }).unwrap();
         store.update(|s| { s.settings.quiet = true; Ok(()) }).unwrap();
+        store.update(|s| { s.companion.check_in(Local::now().date_naive())?; Ok(()) }).unwrap();
+        assert_eq!(Store::load(dir.clone()).unwrap().state.companion.total, 1);
         assert!(Store::load(dir.clone()).unwrap().state.settings.quiet);
         assert!(store.update(|s| { s.settings.scale = 999.0; Ok(()) }).is_err());
         assert_eq!(store.state.settings.scale, 0.45);

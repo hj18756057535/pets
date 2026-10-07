@@ -1,6 +1,7 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 mod model;
+mod companion;
 mod memory;
 mod interaction;
 mod pets;
@@ -80,6 +81,7 @@ impl Backend {
         let mut value = serde_json::to_value(&self.store.state).unwrap_or(json!({}));
         let object = value.as_object_mut().unwrap();
         object.insert("interaction".into(), json!(self.interaction.as_ref().map(|s| &s.mode)));
+        object.insert("holidays".into(), companion::holidays());
         object.insert("petLayout".into(), self.layout.clone());
         object.insert("eyeReminder".into(), json!(self.eye.pending));
         object.insert(
@@ -341,6 +343,12 @@ fn tick(app: &tauri::AppHandle) {
         backend.monitor_signature = displays;
     }
     let settings = backend.store.state.settings.clone();
+    let local_now = chrono::Local::now();
+    if companion::holiday_due(&backend.store.state, local_now.date_naive(), chrono::Timelike::hour(&local_now)).is_some() {
+        if let Err(e) = backend.store.update(|s| { companion::enqueue_holiday(s); Ok(()) }) {
+            backend.warning = format!("节日提醒保存失败：{e}");
+        }
+    }
     let eye_changed = backend.eye.tick(
         settings.eye_break,
         settings.quiet,
@@ -560,8 +568,20 @@ async fn petdesk_call(
         #[cfg(debug_assertions)]
         "smoke-windows" if !smoke_script().is_empty() => Ok(json!({
             "panel":app.get_webview_window("panel").is_some(),
-            "toy":app.get_webview_window("toy").is_some()
+            "toy":app.get_webview_window("toy").is_some(),
+            "resumeTest":std::env::var("PETDESK_SMOKE_RESUME").as_deref() == Ok("1")
         })),
+        #[cfg(debug_assertions)]
+        "smoke-bubble-click" if !smoke_script().is_empty() && window.label() == "panel" => {
+            let id = input.as_str().filter(|id| ["ack", "snooze"].contains(id)).ok_or("Invalid test button")?;
+            let pet = app.get_webview_window("pet").ok_or("Missing pet")?;
+            pet.eval(&format!("(async () => {{
+                const button = document.getElementById('{id}');
+                if (document.getElementById('bubble').hidden || button.disabled) return;
+                button.click();
+            }})()" )).map_err(|e| e.to_string())?;
+            Ok(Value::Null)
+        }
         "toy-init" => Ok(json!(backend.lock().unwrap().interaction.as_ref().map(|s| &s.mode))),
         "toy-place" if window.label() == "toy" => { interaction::place(&app, &window, &input)?; Ok(Value::Null) }
         "interaction-stop" => { interaction::stop(&app, true); Ok(Value::Null) }
@@ -600,6 +620,26 @@ async fn petdesk_call(
             let preview = pet.preview(&token);
             b.pending = Some((token, pet));
             Ok(preview)
+        }
+        "check-in" if window.label() == "panel" || window.label() == "pet" => {
+            let mut added = false;
+            backend.lock().unwrap().store.update(|s| {
+                added = s.companion.check_in(chrono::Local::now().date_naive())?;
+                Ok(())
+            })?;
+            broadcast(&app);
+            if added { let _ = app.emit_to("pet", "play", "waving"); }
+            Ok(json!(added))
+        }
+        "companion-config" if window.label() == "panel" => {
+            backend.lock().unwrap().store.update(|s| {
+                if let Some(v) = input.get("moodEnabled") { s.companion.mood_enabled = v.as_bool().ok_or("情绪设置无效")?; }
+                if let Some(v) = input.get("holidayEnabled") { s.companion.holiday_enabled = v.as_bool().ok_or("节日设置无效")?; }
+                if let Some(v) = input.get("moodMinutes") { s.companion.mood_minutes = v.as_u64().filter(|v| (1..=180).contains(v)).ok_or("间隔应为 1～180 分钟")? as u32; }
+                Ok(())
+            })?;
+            broadcast(&app);
+            Ok(Value::Null)
         }
         "init" => {
             let visible = app.get_webview_window("pet")

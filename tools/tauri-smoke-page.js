@@ -45,6 +45,25 @@ window.addEventListener('load', async () => {
     check(!(await api.init()).dock, 'legacy dock restored to floating');
     check(!api.dockPet && !api.expandPet && !document.querySelector('#dock-pet'), 'edge controls removed');
     check(document.querySelector('#today').textContent.length > 0, 'panel rendered');
+    check((await api.init()).companion.streak === 0, 'legacy state defaults companionship');
+    document.querySelector('#check-in').click();
+    await wait(() => document.querySelector('#spark-streak').textContent.includes('1 天'), 'check-in reaches UI');
+    check(document.querySelector('#check-in').disabled, 'checked-in button disabled');
+    check(await api.checkIn() === false && (await api.init()).companion.total === 1, 'duplicate check-in is idempotent');
+    await api.companionConfig({ moodMinutes: 1, moodEnabled: false, holidayEnabled: false });
+    check((await api.init()).companion.moodMinutes === 1, 'companion preferences persisted');
+    try { await api.companionConfig({moodMinutes:0}); throw new Error('invalid interval accepted'); }
+    catch(error) { check(error.message !== 'invalid interval accepted', 'invalid mood interval rejected'); }
+    document.querySelector('[data-tab="reminders"]').click();
+    check(document.querySelectorAll('.calendar-day').length >= 28, 'calendar month rendered');
+    const monthTitle = document.querySelector('#calendar-title').textContent;
+    document.querySelector('#calendar-next').click();
+    check(document.querySelector('#calendar-title').textContent !== monthTitle, 'calendar next month');
+    const selectedDate = document.querySelector('.calendar-day').getAttribute('aria-label').slice(0,10);
+    document.querySelector('.calendar-day').click(); document.querySelector('#calendar-add').click();
+    check(document.querySelector('#meeting-date').value === selectedDate, 'calendar selection fills reminder form');
+    document.querySelector('#calendar-today').click();
+    await api.companionConfig({moodMinutes:20,moodEnabled:true,holidayEnabled:true});
     await api.settings({ scale: 0.45, quiet: true, reducedMotion: true });
     check((await api.init()).settings.scale === 0.45, 'settings persisted');
     await wait(() => document.querySelector('#setting-scale').value === '0.45', 'settings event');
@@ -75,6 +94,44 @@ window.addEventListener('load', async () => {
       await pause(500);
     }
     check(document.querySelectorAll('[data-interaction]').length === 3, 'three play modes available');
+    if ((await call('smoke-windows')).resumeTest) {
+      const meetingAt = new Date(Date.now() + 4000).toISOString();
+      const once = await api.addReminder({ title: 'Resume once', meetingAt, leadMinutes: 0 });
+      const repeat = await api.addReminder({ title: 'Resume repeat', meetingAt, leadMinutes: 0, repeatDays: [0, 1, 2, 3, 4, 5, 6] });
+      await api.previewEyeBreak();
+      const before = Date.now();
+      await call('smoke-report', { phase: 'resume-ready', checks });
+      // The host suspends only this isolated Rust process for 12 seconds.
+      // WebView timers may keep running; delay assertions until after the host resumes it.
+      await pause(16000);
+      await wait(async () => (await api.init()).reminders.find(r => r.id === once.id)?.status === 'active', 'overdue reminder after process resume');
+      const restored = await api.init();
+      check(Date.now() - before >= 12000, 'resume scenario spans a scheduler gap');
+      check(restored.reminders.find(r => r.id === repeat.id)?.status === 'active', 'recurring reminder activates after resume');
+      const future = restored.reminders.filter(r => r.seriesId === repeat.seriesId && r.status === 'pending');
+      check(future.length === 1 && Date.parse(future[0].dueAt) > Date.now(), 'resume creates exactly one future recurrence');
+      check(!restored.eyeReminder, 'resume clears stale eye reminder');
+      await wait(() => document.querySelector('#home-inbox').textContent.includes('Resume once'), 'resume event reaches panel');
+      checks.push('overdue reminder reaches UI after resume');
+      await api.reminderAction({ id: once.id, action: 'snooze' });
+      check((await api.init()).reminders.find(r => r.id === once.id)?.status === 'pending', 'snooze responds after resume');
+      await api.reminderAction({ id: once.id, action: 'done' });
+      check((await api.init()).reminders.find(r => r.id === once.id)?.status === 'done', 'acknowledgement responds after resume');
+      await api.reminderAction({ id: repeat.id, action: 'done' });
+      // Existing active reminders can be revealed without creating OS notifications.
+      await api.settings({ quiet: false });
+      await api.previewEyeBreak();
+      await pause(250);
+      await call('smoke-bubble-click', 'snooze');
+      await wait(async () => !(await api.init()).eyeReminder, 'bubble snooze button after resume');
+      checks.push('bubble snooze click responds after resume');
+      await api.previewEyeBreak();
+      await pause(250);
+      await call('smoke-bubble-click', 'ack');
+      await wait(async () => !(await api.init()).eyeReminder, 'bubble acknowledge button after resume');
+      checks.push('bubble acknowledge click responds after resume');
+      await api.settings({ quiet: true });
+    }
     const movement = await call('smoke-move');
     check(movement.stable && movement.moved, 'movement preserves surface size and canvas offset');
     const home = (await api.init()).petLayout.anchor;
