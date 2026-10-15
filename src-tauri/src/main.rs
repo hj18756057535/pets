@@ -5,6 +5,7 @@ mod companion;
 mod memory;
 mod interaction;
 mod pets;
+mod multi_pet;
 mod masking;
 mod pii;
 mod recovery;
@@ -230,19 +231,23 @@ fn current_payload(app: &tauri::AppHandle) -> Value {
         .get_webview_window("pet")
         .and_then(|w| w.is_visible().ok())
         .unwrap_or(false);
-    app.state::<Mutex<Backend>>().lock().unwrap().payload(visible)
+    let mut payload = app.state::<Mutex<Backend>>().lock().unwrap().payload(visible);
+    payload["companions"] = multi_pet::summary(app);
+    payload
 }
 fn broadcast(app: &tauri::AppHandle) {
     let payload = current_payload(app);
     let _ = app.emit_to("panel", "state", &payload);
     let _ = app.emit_to("pet", "state", &payload);
+    multi_pet::broadcast_settings(app);
 }
 fn panel(app: &tauri::AppHandle, tab: &str) {
     let tab = if ["home", "reminders", "settings"].contains(&tab) { tab } else { "home" };
     app.state::<Mutex<Backend>>().lock().unwrap().tab = tab.into();
     match ensure_panel(app) {
       Ok(window) => {
-        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = memory::set_visible(&window, true);
         let _ = window.set_focus();
         let _ = app.emit_to("panel", "tab", tab);
       }
@@ -284,8 +289,9 @@ fn show_pet(app: &tauri::AppHandle) {
     }
     let _ = restore(app);
     if let Some(window) = app.get_webview_window("pet") {
-        let _ = window.show();
+        let _ = memory::set_visible(&window, true);
     }
+    let _ = multi_pet::restore_all(app);
     broadcast(app);
 }
 fn end_drag(app: &tauri::AppHandle) -> Result<(), String> {
@@ -389,10 +395,11 @@ fn tick(app: &tauri::AppHandle) {
     drop(backend);
     if display_changed {
         let _ = restore(app);
+        let _ = multi_pet::restore_all(app);
     }
     if show {
         if let Some(window) = app.get_webview_window("pet") {
-            let _ = window.show();
+            let _ = memory::set_visible(&window, true);
         }
     }
     if !settings.quiet && !due.is_empty() {
@@ -476,6 +483,9 @@ async fn petdesk_call(
     channel: String,
     input: Value
 ) -> Result<Value, String> {
+    if multi_pet::is_companion(window.label()) {
+        return multi_pet::call(&app, &window, &channel, input);
+    }
     if !["pet", "panel", "toy"].contains(&window.label()) {
         return Err("不允许的请求来源".into());
     }
@@ -543,6 +553,42 @@ async fn petdesk_call(
             if menu.0.get(action).is_none() { return Err("Menu item missing".into()); }
             menu_action(&app, action);
             Ok(Value::Null)
+        }
+        #[cfg(all(debug_assertions, windows))]
+        "smoke-window-memory" if !smoke_script().is_empty() => {
+            let target = app.get_webview_window(input.as_str().unwrap_or("panel")).ok_or("Missing window")?;
+            let size = target.inner_size().map_err(|e| e.to_string())?;
+            Ok(json!({"level":memory::webview_budget(&target).await?,
+                "visible":target.is_visible().unwrap_or(false),"width":size.width,"height":size.height}))
+        }
+        #[cfg(debug_assertions)]
+        "smoke-close-panel" if !smoke_script().is_empty() => {
+            app.get_webview_window("panel").ok_or("Missing panel")?.close().map_err(|e| e.to_string())?;
+            Ok(Value::Null)
+        }
+        #[cfg(debug_assertions)]
+        "smoke-companions" if !smoke_script().is_empty() => Ok(multi_pet::smoke_state(&app)),
+        #[cfg(all(debug_assertions, windows))]
+        "smoke-companion-inspect" if !smoke_script().is_empty() => {
+            let target = app.get_webview_window(input.as_str().ok_or("Missing companion")?).ok_or("Missing window")?;
+            let snapshot = memory::webview_snapshot(&target).await?;
+            Ok(snapshot)
+        }
+        #[cfg(debug_assertions)]
+        "smoke-companion-drag" if !smoke_script().is_empty() => {
+            multi_pet::smoke_drag(&app, input.as_str().ok_or("Missing slot")?)?;
+            Ok(Value::Null)
+        }
+        #[cfg(debug_assertions)]
+        "smoke-existing-import" if !smoke_script().is_empty() => {
+            let name = input.as_str().ok_or("Missing fixture")?;
+            if !["first", "second"].contains(&name) { return Err("Invalid fixture".into()); }
+            let mut b = backend.lock().unwrap();
+            let pet = pets::read_directory(&b.store.dir.join("fixtures").join(name))?;
+            let token = uuid::Uuid::new_v4().to_string();
+            let preview = pet.preview(&token);
+            b.pending = Some((token,pet));
+            Ok(preview)
         }
         #[cfg(debug_assertions)]
         "smoke-move" if !smoke_script().is_empty() => {
@@ -651,6 +697,8 @@ async fn petdesk_call(
                 .as_ref()
                 .map(|p| json!(p.image_url()))
                 .unwrap_or(Value::Null);
+            drop(b);
+            value["companions"] = multi_pet::summary(&app);
             Ok(value)
         }
         "settings" => {
@@ -704,6 +752,7 @@ async fn petdesk_call(
             }
             drop(b);
             restore(&app)?;
+            multi_pet::restore_all(&app)?;
             broadcast(&app);
             Ok(current_payload(&app))
         }
@@ -814,8 +863,9 @@ async fn petdesk_call(
             interaction::stop(&app, true);
             backend.lock().unwrap().hidden = true;
             if let Some(w) = app.get_webview_window("pet") {
-                let _ = w.hide();
+                let _ = memory::set_visible(&w, false);
             }
+            multi_pet::set_visible(&app, false);
             broadcast(&app);
             Ok(Value::Null)
         }
@@ -891,23 +941,42 @@ async fn petdesk_call(
         "apply-pet" => {
             interaction::stop(&app, true);
             let mut b = backend.lock().unwrap();
-            let (token, pet) = b.pending.take().ok_or("预览已失效，请重新读取宠物")?;
+            let (token, pet) = b.pending.clone().ok_or("预览已失效，请重新读取宠物")?;
             if input["token"].as_str() != Some(token.as_str()) {
-                b.pending = Some((token, pet));
                 return Err("预览已失效，请重新读取宠物".into());
+            }
+            let target = match input.get("slot") {
+                None => "pet",
+                Some(value) => value.as_str().ok_or("宠物位置无效")?,
+            };
+            if target != "pet" {
+                if b.pet.is_none() { return Err("请先导入主宠".into()); }
+                if !multi_pet::is_companion(target) { return Err("最多同时显示三只宠物".into()); }
+                drop(b);
+                multi_pet::apply(&app, target, &pet)?;
+                backend.lock().unwrap().pending = None;
+                show_pet(&app);
+                broadcast(&app);
+                return Ok(json!({"name":pet.name,"slot":target}));
             }
             let loaded = pets::commit(&b.store.dir, &pet)?;
             let name = loaded.name.clone();
             b.pet = Some(loaded);
+            b.pending = None;
             b.hidden = false;
             drop(b);
             restore(&app)?;
             if let Some(w) = app.get_webview_window("pet") {
                 let _ = w.reload();
-                let _ = w.show();
+                let _ = memory::set_visible(&w, true);
             }
             broadcast(&app);
             Ok(json!({"name":name}))
+        }
+        "remove-companion" if window.label() == "panel" => {
+            multi_pet::remove(&app, input.as_str().ok_or("宠物位置无效")?).await?;
+            broadcast(&app);
+            Ok(Value::Null)
         }
         "hit-test" => {
             if window.label() != "pet" {
@@ -1006,8 +1075,9 @@ fn menu_action(app: &tauri::AppHandle, action: &str) {
             interaction::stop(app, true);
             app.state::<Mutex<Backend>>().lock().unwrap().hidden = true;
             if let Some(w) = app.get_webview_window("pet") {
-                let _ = w.hide();
+                let _ = memory::set_visible(&w, false);
             }
+            multi_pet::set_visible(app, false);
             broadcast(app);
         }
         "quiet" => {
@@ -1084,6 +1154,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         })
     );
     startup_stage("backend ready");
+    app.manage(Mutex::new(multi_pet::Companions::load(data_dir.clone())));
     let pet_window = WebviewWindowBuilder::new(handle, "pet", WebviewUrl::App("pet.html".into()))
         .title("PetDesk")
         .inner_size(320.0, 292.0)
@@ -1106,7 +1177,9 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     restore(handle)?;
     startup_stage("layout restored");
     if app.state::<Mutex<Backend>>().lock().unwrap().pet.is_some() {
-        let _ = pet_window.show();
+        let _ = memory::set_visible(&pet_window, true);
+    } else {
+        memory::update_webview_budget(&pet_window);
     }
     let menu = MenuBuilder::new(handle)
         .text("open", "打开陪伴空间")
@@ -1148,11 +1221,13 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     let app_handle = handle.clone();
+    multi_pet::restore_all(handle)?;
     std::thread::spawn(move || {
         let mut last_tick = Instant::now();
         loop {
             std::thread::sleep(StdDuration::from_millis(50));
             heartbeat(&app_handle);
+            multi_pet::heartbeat(&app_handle);
             if last_tick.elapsed() >= StdDuration::from_secs(1) {
                 tick(&app_handle);
                 last_tick = Instant::now();
@@ -1187,7 +1262,14 @@ fn main() {
             if window.label() == "panel" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
-                    let _ = window.hide();
+                    if let Some(panel) = window.app_handle().get_webview_window("panel") {
+                        let _ = memory::set_visible(&panel, false);
+                    }
+                }
+            }
+            if matches!(event, tauri::WindowEvent::Resized(_)) {
+                if let Some(webview) = window.app_handle().get_webview_window(window.label()) {
+                    memory::update_webview_budget(&webview);
                 }
             }
         })

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Only the two local PetDesk pages may call the application command.",
-  "windows": ["panel", "pet"],
+  "description": "Local PetDesk panel, main pet and two companion windows; Rust limits each window's commands.",
+  "windows": ["panel", "pet", "pet-2", "pet-3"],
   "permissions": ["core:default"]
 }

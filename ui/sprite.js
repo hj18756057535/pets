@@ -39,13 +39,14 @@ export class Sprite {
     if (this.frames) this.draw();
   }
   advance() {
+    if (this.paused || (document.hidden && !this.keepAnimating)) return;
     if (this.until && Date.now() >= this.until) this.play('idle');
-    if (this.reduced || this.paused || (document.hidden && !this.keepAnimating)) return;
+    if (this.reduced) return;
     this.frame = (this.frame + 1) % this.frames[this.rows[this.action]].length;
     this.draw();
   }
   draw() {
-    if (this.destroyed) return;
+    if (this.destroyed || this.paused) return;
     const row = this.rows[this.action]; const col = this.frames[row][this.reduced ? 0 : this.frame] ?? 0;
     // Reuse one isolated frame instead of retaining every frame in the atlas.
     // The 1:1 crop still prevents filtering from sampling adjacent atlas cells.

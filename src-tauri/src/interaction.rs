@@ -32,7 +32,11 @@ pub fn step(from: Point, to: Point, distance: f64) -> (Point, bool) {
 
 pub fn stop(app: &tauri::AppHandle, restore_home: bool) {
     let active = app.state::<Mutex<Backend>>().lock().unwrap().interaction.take().is_some();
-    if let Some(toy) = app.get_webview_window("toy") { let _ = toy.hide(); }
+    if let Some(toy) = app.get_webview_window("toy") {
+        let _ = memory::set_visible(&toy, false);
+        // A cancelled ball placement can otherwise retain a full-screen surface.
+        let _ = toy.set_size(tauri::LogicalSize::new(1.0, 1.0));
+    }
     if !active { return; }
     if restore_home { let _ = restore(app); }
     let _ = app.emit_to("pet", "motion", json!({"moving":false,"action":"idle"}));
@@ -53,7 +57,7 @@ pub fn start(app: &tauri::AppHandle, mode: &str) -> Result<(), String> {
     let home = Point { x: b.layout["anchor"]["x"].as_f64().unwrap_or(0.0), y: b.layout["anchor"]["y"].as_f64().unwrap_or(0.0) };
     b.interaction = Some(Interaction { mode: if mode == "ball" { "place" } else { mode }.into(), home, target: p, started: Instant::now(), last: Instant::now(), near_since: None, phase: String::new(), catches: 0 });
     drop(b);
-    if let Some(panel) = app.get_webview_window("panel") { let _ = panel.hide(); }
+    if let Some(panel) = app.get_webview_window("panel") { let _ = memory::set_visible(&panel, false); }
     if mode == "wand" || mode == "ball" {
         let toy = match ensure_toy(app) {
             Ok(toy) => toy,
@@ -65,13 +69,13 @@ pub fn start(app: &tauri::AppHandle, mode: &str) -> Result<(), String> {
             toy.set_ignore_cursor_events(false).map_err(|e| e.to_string())?;
             toy.set_focusable(true).map_err(|e| e.to_string())?;
             let _ = app.emit_to("toy", "toy-mode", "place");
-            toy.show().map_err(|e| e.to_string())?;
+            memory::set_visible(&toy, true).map_err(|e| e.to_string())?;
             let _ = toy.set_focus();
         } else if mode == "wand" {
             set_window(&toy, p.x + 12.0, p.y + 12.0, 96.0, 96.0)?;
             toy.set_ignore_cursor_events(true).map_err(|e| e.to_string())?;
             let _ = app.emit_to("toy", "toy-mode", "wand");
-            let _ = toy.show();
+            let _ = memory::set_visible(&toy, true);
         }
     }
     broadcast(app);

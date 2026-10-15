@@ -34,7 +34,8 @@ async function main() {
     catch { return null; }
   };
   try {
-    const until = Date.now() + (resume ? 75000 : 45000);
+    // Native WebView visibility now throttles timers while the panel is hidden.
+    const until = Date.now() + (resume ? 120000 : 90000);
     while (Date.now() < until) {
       if (spawnError) throw spawnError;
       if (startupMs === undefined) {

@@ -50,7 +50,7 @@ function render() {
     document.getElementById('ack').textContent = eye ? '去歇会儿' : '知道啦';
     document.getElementById('all').setAttribute('aria-label', eye ? '护眼提醒设置' : '查看所有提醒');
   }
-  if (sprite) { sprite.reduced = state.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches; if (!moving) sprite.play(current && !state.settings.quiet ? current.action || 'waiting' : 'idle'); }
+  if (sprite) { sprite.paused = !state.petVisible; sprite.reduced = state.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches; if (!moving) sprite.play(current && !state.settings.quiet ? current.action || 'waiting' : 'idle'); }
 }
 function hit(point) {
   if (pointerDown) return;

@@ -1,6 +1,20 @@
 use base64::{ engine::general_purpose::STANDARD, Engine };
 use serde_json::{ json, Value };
 use std::{ collections::HashSet, fs, io::{ Cursor, Read }, path::Path };
+use std::{collections::HashMap, sync::{Arc, Mutex, OnceLock, Weak}};
+
+// Keep a single compressed image buffer for identical pets and cheap clones of
+// import candidates. Weak entries do not retain resources after a pet is removed.
+fn shared_image(bytes: Vec<u8>) -> Arc<[u8]> {
+    static CACHE: OnceLock<Mutex<HashMap<Vec<u8>, Weak<[u8]>>>> = OnceLock::new();
+    let key = ring::digest::digest(&ring::digest::SHA256, &bytes).as_ref().to_vec();
+    let mut cache = CACHE.get_or_init(Mutex::default).lock().unwrap();
+    cache.retain(|_, image| image.strong_count() > 0);
+    if let Some(image) = cache.get(&key).and_then(Weak::upgrade) { return image; }
+    let image: Arc<[u8]> = bytes.into();
+    cache.insert(key, Arc::downgrade(&image));
+    image
+}
 
 const MAX_ZIP: usize = 25 * 1024 * 1024;
 const MAX_IMAGE: usize = 20 * 1024 * 1024;
@@ -11,12 +25,12 @@ pub struct Pet {
     pub name: String,
     pub description: String,
     pub version: u32,
-    pub image: Vec<u8>,
+    pub image: Arc<[u8]>,
     pub source: String,
 }
 impl Pet {
     pub fn image_url(&self) -> String {
-        format!("data:image/webp;base64,{}", STANDARD.encode(&self.image))
+        format!("data:image/webp;base64,{}", STANDARD.encode(self.image.as_ref()))
     }
     pub fn preview(&self, token: &str) -> Value {
         json!({"token": token, "name": self.name, "description": self.description, "version": self.version, "image": self.image_url()})
@@ -87,7 +101,7 @@ fn from_parts(meta: Value, image: Vec<u8>, source: String) -> Result<Pet, String
         name: name(&meta),
         description: description(&meta),
         version: version as u32,
-        image,
+        image: shared_image(image),
         source,
     })
 }
@@ -331,7 +345,7 @@ pub fn read_shared(raw: &str) -> Result<Pet, String> {
     pet.source = format!("{SITE}/share/{id}");
     Ok(pet)
 }
-pub fn commit(dir: &Path, pet: &Pet) -> Result<Pet, String> {
+pub fn store_asset(dir: &Path, pet: &Pet) -> Result<(String, Pet), String> {
     let folder = format!(
         "pet-import-{}-{}",
         chrono::Utc::now().timestamp_millis(),
@@ -339,7 +353,7 @@ pub fn commit(dir: &Path, pet: &Pet) -> Result<Pet, String> {
     );
     let destination = dir.join(&folder);
     fs::create_dir(&destination).map_err(|e| e.to_string())?;
-    fs::write(destination.join("spritesheet.webp"), &pet.image).map_err(|e| e.to_string())?;
+    fs::write(destination.join("spritesheet.webp"), pet.image.as_ref()).map_err(|e| e.to_string())?;
     fs
         ::write(
             destination.join("pet.json"),
@@ -351,6 +365,10 @@ pub fn commit(dir: &Path, pet: &Pet) -> Result<Pet, String> {
         )
         .map_err(|e| e.to_string())?;
     let loaded = read_directory(&destination)?;
+    Ok((folder, loaded))
+}
+pub fn commit(dir: &Path, pet: &Pet) -> Result<Pet, String> {
+    let (folder, loaded) = store_asset(dir, pet)?;
     let selection = dir.join("selected-pet.json");
     let temp = dir.join("selected-pet.json.tmp");
     fs
@@ -377,4 +395,19 @@ pub fn selected(dir: &Path) -> Option<Pet> {
 }
 pub fn initial(root: &Path) -> Option<Pet> {
     selected(root).or_else(|| read_directory(&root.join("pet")).ok())
+}
+
+#[cfg(test)]
+mod resource_tests {
+    use super::*;
+    #[test]
+    fn identical_images_share_buffers_without_retaining_removed_pets() {
+        let first = shared_image(vec![5, 4, 3, 2, 1]);
+        let second = shared_image(vec![5, 4, 3, 2, 1]);
+        assert!(Arc::ptr_eq(&first, &second));
+        assert!(!Arc::ptr_eq(&first, &shared_image(vec![1, 2, 3])));
+        let weak = Arc::downgrade(&first);
+        drop(first); drop(second);
+        assert!(weak.upgrade().is_none());
+    }
 }

@@ -15,9 +15,16 @@ function tab(name) {
   if (!['home', 'reminders', 'settings'].includes(name)) name = 'home';
   document.querySelectorAll('.page').forEach(el => { el.hidden = el.id !== name; });
   document.querySelectorAll('.nav').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
+  updatePreviewActivity();
   if (name === 'settings') void refreshMemory();
   $('page-title').textContent = { home: '今天，也一起好好工作。', reminders: '重要的事，有我记着。', settings: '舒服的陪伴，刚刚好。' }[name];
 }
+function updatePreviewActivity() {
+  if (!sprite) return;
+  sprite.paused = document.hidden || $('home').hidden;
+  if (sprite.frames) sprite.draw();
+}
+document.addEventListener('visibilitychange', updatePreviewActivity);
 let memoryBusy = false;
 const memorySize = bytes => (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
 async function refreshMemory(trim = false) {
@@ -27,7 +34,7 @@ async function refreshMemory(trim = false) {
     const value = await (trim ? api.trimMemory() : api.memoryInfo());
     $('memory-percent').textContent = value.percent + '%'; $('memory-meter').value = value.percent;
     $('memory-summary').textContent = '已用 ' + memorySize(value.used) + ' / 总计 ' + memorySize(value.total) + ' · 可用 ' + memorySize(value.available);
-    $('memory-app').textContent = '桌宠及界面进程约 ' + Math.round(value.appWorkingSet / 1024 / 1024) + ' MB（进程汇总，含共享内存）';
+    $('memory-app').textContent = '桌宠及界面共 ' + value.processCount + ' 个进程 · 工作集约 ' + Math.round(value.appWorkingSet / 1024 / 1024) + ' MB（含共享内存重复统计） · 私有提交约 ' + Math.round(value.appPrivateBytes / 1024 / 1024) + ' MB（不等同于物理内存）';
     if (trim) $('memory-result').textContent = '已整理 ' + value.trimmed + ' 个桌宠进程，本次工作集减少约 ' + Math.round(value.reducedWorkingSet / 1024 / 1024) + ' MB；再次使用时可能回升。';
   } catch (error) { $('memory-result').textContent = error.message; }
   finally { memoryBusy = false; $('memory-refresh').disabled = false; $('memory-trim').disabled = false; }
@@ -62,6 +69,7 @@ function item(reminder) {
   row.append(heading, date, due, buttons); return row;
 }
 function render() {
+  renderPets();
   renderCompanion(state);
   const modes = { wand: '移动鼠标挥动逗猫棒', place: '点击桌面选择球的位置', fetch: '正在跑向小球', return: '正在把球叼回原位', follow: '正在跟随鼠标' };
   $('play-status').textContent = state.interaction ? modes[state.interaction] + ' · Esc 结束互动' : '逗猫棒随鼠标移动；放球后小伙伴会叼回原位。Esc 结束互动。';
@@ -83,7 +91,7 @@ function render() {
   $('eye-pending').hidden = !state.eyeReminder;
   $('eye-message').textContent = state.eyeReminder?.title || '';
   $('eye-status').textContent = !state.settings.eyeBreak ? '已关闭' : state.settings.quiet ? '免打扰中，暂停计时与气泡' : `已开启 · ${state.settings.eyeMinutes} 分钟一次`;
-  if (sprite?.frames) { sprite.reduced = state.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches; sprite.draw(); }
+  if (sprite?.frames) { sprite.reduced = state.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches; updatePreviewActivity(); }
   const next = open[0]; $('next-reminder').replaceChildren();
   if (next) {
     const time = document.createElement('div'); time.className = 'next-time'; time.textContent = new Date(next.meetingAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -153,14 +161,41 @@ $('test-reminder').addEventListener('click', () => run(async () => {
   finally { $('test-reminder').disabled = false; }
 }));
 api.onState(value => { state = value; render(); }); api.onTab(tab); api.onImport(openImport);
-let importCandidate = null, importSprite = null, importBusy = false, applying = false, importGeneration = 0;
+let importCandidate = null, importSprite = null, importBusy = false, applying = false, importGeneration = 0, importSlot = 'pet';
+function renderPets() {
+  const companions = state.companions || [];
+  $('pet-count').textContent = `${(state.pet ? 1 : 0) + companions.length} / 3`;
+  $('companion-list').replaceChildren();
+  for (const id of ['pet-2', 'pet-3']) {
+    const pet = companions.find(p => p.id === id);
+    const row = document.createElement('div'); row.className = 'companion-row'; row.dataset.slot = id;
+    const name = document.createElement('span'); name.textContent = pet?.name || `陪伴位置 ${id.slice(-1)} · 空位`;
+    const replace = document.createElement('button'); replace.className = 'text-button';
+    replace.textContent = pet ? '替换' : '添加宠物'; replace.disabled = !state.pet;
+    replace.addEventListener('click', () => openImport(id));
+    row.append(name, replace);
+    if (pet) {
+      const remove = document.createElement('button'); remove.className = 'text-button'; remove.textContent = '移出桌面';
+      remove.addEventListener('click', () => run(async () => {
+        remove.disabled = true;
+        try { await api.removeCompanion(id); toast('已移出桌面，导入文件保留在本机。'); }
+        finally { remove.disabled = false; }
+      }));
+      row.append(remove);
+    }
+    $('companion-list').append(row);
+  }
+}
 function importControls(busy) {
   importBusy = busy;
   for (const id of ['import-zip', 'import-folder', 'import-fetch', 'import-url']) $(id).disabled = busy;
   $('import-apply').disabled = busy || !importCandidate;
   $('import-status').classList.toggle('busy', busy);
 }
-function openImport() {
+function openImport(slot = 'pet') {
+  if (applying || $('import-dialog').open) return;
+  importSlot = ['pet', 'pet-2', 'pet-3'].includes(slot) ? slot : 'pet';
+  $('import-title').textContent = importSlot === 'pet' ? '选择主宠' : `选择第 ${importSlot.slice(-1)} 位小伙伴`;
   $('import-error').hidden = true;
   $('import-preview').hidden = true;
   $('import-status').textContent = '支持 .codex-pet.zip、普通 ZIP 和宠物文件夹。';
@@ -204,8 +239,8 @@ $('import-apply').addEventListener('click', async () => {
   if (importBusy || !importCandidate) return;
   const candidate = importCandidate; applying = true; importControls(true);
   try {
-    await api.applyPet(candidate.token);
-    sprite?.destroy(); sprite = new Sprite($('preview'), candidate.image); await sprite.ready;
+    await api.applyPet(candidate.token, importSlot);
+    if (importSlot === 'pet') { sprite?.destroy(); sprite = new Sprite($('preview'), candidate.image); await sprite.ready; }
     render(); applying = false; closeImport(); toast(`欢迎 ${candidate.name}，已经换好啦。`);
   } catch (e) { $('import-error').textContent = e.message; $('import-error').hidden = false; }
   finally { applying = false; importControls(false); }
