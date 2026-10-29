@@ -1,0 +1,4 @@
+interface:
+  display_name: "开发协作主流程"
+  short_description: "串起当前项目的需求、交互、计划、实现、测试、协作日志与持续迭代"
+  default_prompt: "使用 $aidev-manage-development 按当前目标和项目现状选择工作路径，衔接需求、设计、实现与测试，小改定向处理，并维护相关文档和协作日志。"

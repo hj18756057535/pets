@@ -1,0 +1,4 @@
+interface:
+  display_name: "复用优先，保持简单"
+  short_description: "优先复用现有代码，限制修改范围，消除无用抽象与未要求的功能"
+  default_prompt: "使用 $aidev-keep-changes-simple 检查并简化本次变更，优先复用已有能力，不增加未经需要的功能、抽象或文档。"

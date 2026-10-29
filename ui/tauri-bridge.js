@@ -17,6 +17,14 @@
     return () => { active = false; unlisten?.(); };
   };
   window.petdesk = {
+    workbenchLoad: date => call('workbench-load', { date }),
+    workbenchLoadKnowledge: () => call('workbench-load-knowledge'),
+    workbenchSaveTask: task => call('workbench-save-task', task),
+    workbenchTaskAction: value => call('workbench-task-action', value),
+    workbenchSaveShortcut: value => call('workbench-save-shortcut', value),
+    workbenchShortcutAction: value => call('workbench-shortcut-action', value),
+    workbenchOpenShortcut: id => call('workbench-open-shortcut', { id }),
+    workbenchPickTarget: kind => call('workbench-pick-target', { kind }),
     checkIn: () => call('check-in'),
     companionConfig: value => call('companion-config', value),
     openMaskdesk: () => call('open-maskdesk'),

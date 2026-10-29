@@ -1,0 +1,4 @@
+interface:
+  display_name: "产品需求沟通"
+  short_description: "把产品想法和反馈整理为明确范围、业务规则与可验证的验收条件"
+  default_prompt: "使用 $aidev-define-product-requirements 澄清当前问题和范围，区分本轮需求修订与历史功能的新需求，维护对应文档并衔接开发。"

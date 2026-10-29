@@ -35,7 +35,9 @@ coverage/
 *.p12
 *.pdmap
 .codex/
-.agents/
+.agents/*
+!.agents/skills/
+/AGENTS.local.md
 .idea/
 .vscode/
 

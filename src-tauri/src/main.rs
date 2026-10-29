@@ -12,6 +12,7 @@ mod recovery;
 mod maskdesk;
 mod mask_documents;
 mod keyword_library;
+mod workbench;
 
 use chrono::{ DateTime, Duration, Utc };
 use model::{ EyeBreak, Point, Store };
@@ -58,9 +59,13 @@ struct Drag {
     anchor: Point,
     time: Instant,
 }
-struct PetMenu(tauri::menu::Menu<tauri::Wry>);
+struct AppMenus {
+    pet: tauri::menu::Menu<tauri::Wry>,
+    tray: tauri::menu::Menu<tauri::Wry>,
+}
 struct Backend {
     store: Store,
+    workbench: workbench::Store,
     pet: Option<Pet>,
     pending: Option<(String, Pet)>,
     import_generation: u64,
@@ -242,7 +247,7 @@ fn broadcast(app: &tauri::AppHandle) {
     multi_pet::broadcast_settings(app);
 }
 fn panel(app: &tauri::AppHandle, tab: &str) {
-    let tab = if ["home", "reminders", "settings"].contains(&tab) { tab } else { "home" };
+    let tab = if ["home", "reminders", "settings", "workbench", "knowledge"].contains(&tab) { tab } else { "home" };
     app.state::<Mutex<Backend>>().lock().unwrap().tab = tab.into();
     match ensure_panel(app) {
       Ok(window) => {
@@ -483,6 +488,30 @@ async fn petdesk_call(
     channel: String,
     input: Value
 ) -> Result<Value, String> {
+    if channel.starts_with("workbench-") {
+        workbench::require_panel(window.label())?;
+        if channel == "workbench-open-shortcut" {
+            let target = app.state::<Mutex<Backend>>().lock().unwrap().workbench
+                .open_target(input["id"].as_str().ok_or("缺少入口标识")?)?;
+            match target {
+                workbench::OpenTarget::Url(url) => app.opener().open_url(url, None::<&str>),
+                workbench::OpenTarget::File(path) => app.opener().open_path(path, None::<&str>),
+            }.map_err(|_| "无法打开本机应用，请确认应用已安装且资料位置正确")?;
+            return Ok(Value::Null);
+        }
+        if channel == "workbench-pick-target" {
+            let kind = input["kind"].as_str().unwrap_or("").to_string();
+            if !["obsidian", "file", "folder"].contains(&kind.as_str()) { return Err("选择类型无效".into()); }
+            return tauri::async_runtime::spawn_blocking(move || {
+                let dialog = rfd::FileDialog::new().set_title("选择知识资料位置");
+                let path = if kind == "folder" { dialog.pick_folder() }
+                    else if kind == "obsidian" { dialog.add_filter("Markdown 笔记", &["md"]).pick_file() }
+                    else { dialog.pick_file() };
+                Ok(json!(path.map(|path| path.to_string_lossy().into_owned())))
+            }).await.map_err(|e| e.to_string())?;
+        }
+        return app.state::<Mutex<Backend>>().lock().unwrap().workbench.call(&channel, input);
+    }
     if multi_pet::is_companion(window.label()) {
         return multi_pet::call(&app, &window, &channel, input);
     }
@@ -535,7 +564,7 @@ async fn petdesk_call(
                 }
                 #[cfg(debug_assertions)]
                 startup_stage("context menu opened");
-                window.popup_menu(&app.state::<PetMenu>().0)
+                window.popup_menu(&app.state::<AppMenus>().pet)
             })();
             #[cfg(debug_assertions)]
             startup_stage("context menu closed");
@@ -548,9 +577,9 @@ async fn petdesk_call(
         }
         #[cfg(debug_assertions)]
         "smoke-menu" if !smoke_script().is_empty() => {
-            let menu = app.state::<PetMenu>();
+            let menu = app.state::<AppMenus>();
             let action = input.as_str().ok_or("Missing action")?;
-            if menu.0.get(action).is_none() { return Err("Menu item missing".into()); }
+            if menu.tray.get(action).is_none() { return Err("Tray menu item missing".into()); }
             menu_action(&app, action);
             Ok(Value::Null)
         }
@@ -1136,6 +1165,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(
         Mutex::new(Backend {
             store,
+            workbench: workbench::Store::new(data_dir.join("workbench")),
             pet,
             pending: None,
             import_generation: 0,
@@ -1204,10 +1234,17 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .separator()
         .text("quit", "退出 PetDesk")
         .build()?;
-    app.manage(PetMenu(menu.clone()));
+    let pet_menu = MenuBuilder::new(handle)
+        .text("waving", "挥挥手")
+        .text("jumping", "蹦一下")
+        .text("review", "陪我专注")
+        .separator()
+        .text("quit", "退出 PetDesk")
+        .build()?;
+    app.manage(AppMenus { pet: pet_menu, tray: menu.clone() });
     TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().ok_or("缺少程序图标")?.clone())
-        .menu(&menu)
+        .menu(&app.state::<AppMenus>().tray)
         .on_menu_event(|app, event| menu_action(app, event.id().as_ref()))
         .on_tray_icon_event(|tray, event| {
             if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {

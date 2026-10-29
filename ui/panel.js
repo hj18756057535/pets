@@ -1,9 +1,23 @@
 import { dateValue, timeValue, nextHour, formatTime, manualTime, parseReminder } from './reminder-time.mjs';
 import { Sprite } from './sprite.js';
 import { setupCompanion, renderCompanion } from './companion-panel.js';
+import { setupWorkbench } from './workbench.mjs';
 const api = window.petdesk;
 const $ = id => document.getElementById(id);
 let state, sprite, filter = 'open', toastTimer;
+const workbench = setupWorkbench(api, tab, draft => {
+  tab('reminders');
+  $('meeting-title').value = draft.title;
+  $('meeting-date').value = draft.date; $('meeting-time').value = draft.time;
+  $('meeting-repeat').value = 'once'; $('repeat-days').hidden = true; $('repeat-note').hidden = true;
+  $('meeting-weekday').value = ''; $('meeting-lead').value = '5';
+  $('quick-reminder').value = ''; $('quick-error').textContent = ''; $('form-error').textContent = '';
+  $('meeting-workbench-source').hidden = false;
+  $('meeting-workbench-note').textContent = '来自每日待办，请确认后保存会议提醒。' + (draft.time ? '' : '待办未设置时间，请补选。') + (Array.from(draft.title).length > 100 ? '会议标题最多 100 字，请缩短标题。' : '');
+  updateTimePreview();
+  (draft.time ? $('meeting-title') : $('meeting-time')).focus();
+  $('reminder-form').scrollIntoView({block: 'center'});
+});
 function toast(text) { $('toast').textContent = text; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500); }
 async function run(operation) { try { return await operation(); } catch (e) { toast(e.message); } }
 setupCompanion(api, run, toast, day => {
@@ -11,13 +25,16 @@ setupCompanion(api, run, toast, day => {
   updateTimePreview(); $('meeting-title').focus(); $('reminder-form').scrollIntoView({block:'center'});
 });
 $('open-maskdesk').addEventListener('click', () => run(() => api.openMaskdesk()));
+$('meeting-workbench-return').addEventListener('click', () => tab('workbench'));
 function tab(name) {
-  if (!['home', 'reminders', 'settings'].includes(name)) name = 'home';
+  if (workbench.hasOpenDialog() && !['workbench', 'knowledge'].includes(name)) return;
+  if (!['home', 'reminders', 'settings', 'workbench', 'knowledge'].includes(name)) name = 'home';
   document.querySelectorAll('.page').forEach(el => { el.hidden = el.id !== name; });
   document.querySelectorAll('.nav').forEach(el => el.classList.toggle('active', el.dataset.tab === name));
   updatePreviewActivity();
+  workbench.show(name);
   if (name === 'settings') void refreshMemory();
-  $('page-title').textContent = { home: '今天，也一起好好工作。', reminders: '重要的事，有我记着。', settings: '舒服的陪伴，刚刚好。' }[name];
+  $('page-title').textContent = { home: '今天，也一起好好工作。', reminders: '重要的事，有我记着。', settings: '舒服的陪伴，刚刚好。', workbench: '今天，也一起好好工作。', knowledge: '让积累，随手可达。' }[name];
 }
 function updatePreviewActivity() {
   if (!sprite) return;
@@ -151,7 +168,7 @@ $('stop-play').addEventListener('click', () => run(() => api.interaction('stop')
 $('quit').addEventListener('click', () => api.quit());
 $('reminder-form').addEventListener('submit', async e => {
   e.preventDefault(); $('form-error').textContent = ''; $('save-reminder').disabled = true;
-  try { const time = selectedTime(); if (!Number.isFinite(time.getTime())) throw new Error('请选择正确的会议时间'); await api.addReminder({ title: $('meeting-title').value, meetingAt: time.toISOString(), leadMinutes: Number($('meeting-lead').value), repeatDays: repeatDays() }); $('meeting-title').value = ''; $('quick-reminder').value = ''; toast('记住啦，到时间我来叫你。'); }
+  try { const time = selectedTime(); if (!Number.isFinite(time.getTime())) throw new Error('请选择正确的会议时间'); await api.addReminder({ title: $('meeting-title').value, meetingAt: time.toISOString(), leadMinutes: Number($('meeting-lead').value), repeatDays: repeatDays() }); $('meeting-title').value = ''; $('quick-reminder').value = ''; $('meeting-workbench-source').hidden = true; toast('记住啦，到时间我来叫你。'); }
   catch (error) { $('form-error').textContent = error.message; }
   finally { $('save-reminder').disabled = false; }
 });

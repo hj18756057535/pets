@@ -4,6 +4,8 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
   <title>PetDesk · 陪伴空间</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="import.css"><link rel="stylesheet" href="reminders.css">
+  <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css"><link rel="stylesheet" href="workbench.css"><link rel="stylesheet" href="date-time-picker.css"><link rel="stylesheet" href="category-picker.css">
+  <script src="vendor/flatpickr/flatpickr.min.js"></script><script src="vendor/flatpickr/zh.js"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -11,6 +13,8 @@
     <div class="nav-label">我的小空间</div>
     <nav aria-label="主导航">
       <button data-tab="home" class="nav active"><span class="nav-icon">⌂</span>陪伴空间</button>
+      <button data-tab="workbench" class="nav"><span class="nav-icon" data-work-icon="check-square"></span>每日待办<span id="work-nav-count" class="nav-count">0</span></button>
+      <button data-tab="knowledge" class="nav"><span class="nav-icon" data-work-icon="book"></span>知识快捷入口</button>
       <button data-tab="reminders" class="nav"><span class="nav-icon">◷</span>会议提醒<span id="nav-count" class="nav-count">0</span></button>
       <button data-tab="settings" class="nav"><span class="nav-icon">☷</span>偏好设置</button>
       <button id="open-maskdesk" class="nav"><span class="nav-icon">▤</span>本地数据脱敏 <span aria-hidden="true">↗</span></button>
@@ -55,6 +59,7 @@
       <div class="reminder-layout">
         <article class="form-card"><div class="section-title"><h2>留一件事给我记着</h2><span class="small-symbol">＋</span></div><p class="helper">到时间，我会举起小纸条叫你。</p>
           <div class="quick-entry"><label for="quick-reminder">一句话安排</label><div class="quick-input"><input id="quick-reminder" placeholder="明天 09:30 项目碰头会" maxlength="160"><button id="parse-reminder" class="secondary">填入表单</button></div><div class="time-chips"><button data-template="今天下午3点项目会">今天下午 3 点…</button><button data-template="明天 09:30 晨会">明天 09:30…</button><button data-template="周三14点需求评审">周三 14 点…</button></div><p id="quick-error" class="form-error" role="alert"></p></div><form id="reminder-form"><label for="meeting-title">会议 / 事项名称</label><input id="meeting-title" maxlength="100" placeholder="例如：周一项目碰头会" required autocomplete="off">
+            <div id="meeting-workbench-source" class="meeting-workbench-source" hidden><p id="meeting-workbench-note"></p><button id="meeting-workbench-return" type="button" class="text-button">返回每日待办 →</button></div>
             <label for="meeting-date">开始时间 <span class="subtle">本机时区 · 24 小时制</span></label><div class="date-time-row"><input id="meeting-date" type="date" required aria-label="会议日期"><input id="meeting-time" type="text" required placeholder="09:30" aria-label="会议时间" maxlength="5" inputmode="numeric" list="clock-options"></div><datalist id="clock-options"><option value="09:00"><option value="10:00"><option value="12:00"><option value="14:00"><option value="15:00"><option value="18:00"><option value="20:00"></datalist><div class="time-chips"><button type="button" data-day="hour">下个整点</button><button type="button" data-day="0">今天</button><button type="button" data-day="1">明天</button><button type="button" data-day="2">后天</button></div><label for="meeting-weekday" class="sr-only">选择星期</label><select id="meeting-weekday"><option value="">或选择最近的星期…</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="0">周日</option></select><p class="field-note">支持输入 9、930、09:30。周几选择未来最近一次。</p><div id="time-preview" class="time-preview" aria-live="polite"></div>
             <label for="meeting-repeat">会议模式</label><select id="meeting-repeat"><option value="once">仅这一次</option><option value="daily">固定会议 · 每天</option><option value="weekdays">固定会议 · 周一至周五</option><option value="weekly">固定会议 · 每周指定几天</option></select>
             <div id="repeat-days" class="repeat-days" hidden><label><input type="checkbox" value="1">周一</label><label><input type="checkbox" value="2">周二</label><label><input type="checkbox" value="3">周三</label><label><input type="checkbox" value="4">周四</label><label><input type="checkbox" value="5">周五</label><label><input type="checkbox" value="6">周六</label><label><input type="checkbox" value="0">周日</label></div><p id="repeat-note" class="field-note" hidden>按本机时区重复，首次日期须属于所选星期；周一至周五不自动排除节假日。到期后自动安排下一次，错过多次只补一条提醒。</p>

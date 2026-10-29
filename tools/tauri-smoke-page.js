@@ -247,7 +247,7 @@ window.addEventListener('load', async () => {
     check(popup.opened && popup.closed && !popup.open, 'pet right click opens and dismisses native menu');
     await call('smoke-menu', 'settings');
     await wait(() => !document.querySelector('#settings').hidden, 'tab event');
-    checks.push('context menu settings navigation');
+    checks.push('tray menu settings navigation');
     document.querySelector('#meeting-title').value = '未保存的会议草稿';
     const memoryBeforeClose = await api.memoryInfo();
     await call('smoke-close-panel');

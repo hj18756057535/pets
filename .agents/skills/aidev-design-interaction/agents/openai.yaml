@@ -1,0 +1,4 @@
+interface:
+  display_name: "交互设计"
+  short_description: "明确页面流程、交互状态、组件复用和人工验收条件，衔接后续前端实现"
+  default_prompt: "使用 $aidev-design-interaction 在现有需求和设计基础上明确页面行为、状态与人工验收条件。"

@@ -1,0 +1,3 @@
+.demo-meeting-form { min-width: 0; }
+#demo-meeting-result { min-height: 20px; }
+#demo-meeting-save:disabled { opacity: .6; cursor: default; }

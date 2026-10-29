@@ -1,0 +1,4 @@
+interface:
+  display_name: "变更审查与验证"
+  short_description: "依据需求与实际变更识别缺陷、检查验证证据，并明确尚未覆盖的风险"
+  default_prompt: "使用 $aidev-review-changes 审查当前实际变更，按证据报告问题、测试结果及未验证项；只要求审查时不修改实现。"

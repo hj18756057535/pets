@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#f6f7f3">
+  <title>PetDesk · 每日待办与知识入口 Demo</title>
+  <link rel="icon" href="../../assets/icon.png">
+  <link rel="stylesheet" href="../../node_modules/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="../../ui/style.css">
+  <link rel="stylesheet" href="../../ui/workbench.css">
+  <link rel="stylesheet" href="../../ui/date-time-picker.css">
+  <link rel="stylesheet" href="../../ui/category-picker.css">
+  <link rel="stylesheet" href="demo.css">
+  <script src="../../node_modules/flatpickr/dist/flatpickr.min.js"></script>
+  <script src="../../node_modules/flatpickr/dist/l10n/zh.js"></script>
+  <script type="module" src="demo.mjs"></script>
+</head>
+<body class="workbench-demo">
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <aside class="sidebar">
+    <a class="brand" href="#workbench"><img src="../../assets/icon.png" alt=""><span>PetDesk<small>给桌面一点陪伴</small></span></a>
+    <div class="nav-label">我的工作小空间</div>
+    <nav aria-label="主导航">
+      <button class="nav active" data-demo-tab="workbench"><span class="nav-icon" data-work-icon="check-square"></span>每日待办<span id="work-nav-count" class="nav-count">0</span></button>
+      <button class="nav" data-demo-tab="knowledge"><span class="nav-icon" data-work-icon="book"></span>知识快捷入口</button>
+    </nav>
+    <div class="sidebar-note"><span class="status-dot"></span>你忙你的，我在这里。<p>记下要做的事<br>回到熟悉的知识</p></div>
+    <div class="sidebar-bottom"><span>LOCAL COMPANION</span><small>工作台 · 交互 Demo</small></div>
+  </aside>
+  <main id="main-content" tabindex="-1">
+    <header class="workbench-header"><div><div class="eyebrow" id="calendar-heading"></div><h1 id="page-title">今天，也一起好好工作。</h1></div><span class="demo-badge"><i></i>交互 Demo · 刷新重置</span></header>
+  </main>
+  <dialog id="demo-meeting-dialog" class="editor-dialog" aria-labelledby="demo-meeting-heading">
+    <form id="demo-meeting-form">
+      <div class="dialog-heading"><div><div class="eyebrow">来自每日待办</div><h2 id="demo-meeting-heading">创建会议提醒</h2></div><button type="button" class="icon-button" id="demo-meeting-close" aria-label="关闭会议提醒">×</button></div>
+      <p class="input-help">演示预填流程；正式应用会进入现有会议提醒页面，确认后才创建。</p>
+      <label for="demo-meeting-title">会议名称</label><input id="demo-meeting-title" maxlength="100" required>
+      <div class="form-columns"><div><label for="demo-meeting-date">日期</label><input id="demo-meeting-date" data-picker="date" required></div><div><label for="demo-meeting-time">时间</label><input id="demo-meeting-time" data-picker="time" placeholder="请选择会议时间" required></div></div>
+      <label for="demo-meeting-lead">什么时候叫你</label><select id="demo-meeting-lead"><option value="0">准时提醒</option><option value="5" selected>提前 5 分钟</option><option value="10">提前 10 分钟</option></select>
+      <p id="demo-meeting-result" class="input-help" role="status"></p>
+      <div class="dialog-actions"><span class="input-help">仅保留在本次预览</span><div class="action-spacer"></div><button class="primary" type="submit" id="demo-meeting-save">模拟创建提醒</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

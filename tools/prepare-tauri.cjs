@@ -31,6 +31,16 @@ function copyTree(source, destination) {
 }
 copyTree(path.join(root, 'ui'), target);
 copyTree(path.join(root, 'assets'), path.join(target, 'assets'));
+for (const [source, name] of [
+  ['dist/flatpickr.min.js', 'flatpickr.min.js'],
+  ['dist/flatpickr.min.css', 'flatpickr.min.css'],
+  ['dist/l10n/zh.js', 'zh.js'],
+  ['LICENSE.md', 'LICENSE.md'],
+]) {
+  const destination = path.join(target, 'vendor', 'flatpickr', name);
+  expected.add(destination);
+  writeChanged(destination, fs.readFileSync(path.join(root, 'node_modules', 'flatpickr', source)));
+}
 function removeStaleFiles(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);

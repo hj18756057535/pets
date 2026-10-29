@@ -1,0 +1,25 @@
+.flatpickr-calendar { font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; border: 1px solid #dce5d5; border-radius: 12px; box-shadow: 0 9px 28px #324d3420; color: #3e5840; background: #fffefb; }
+.flatpickr-calendar.arrowTop:before, .flatpickr-calendar.arrowTop:after { display: none; }
+.flatpickr-months { padding: 7px 6px 4px; }
+.flatpickr-months .flatpickr-month { color: #456542; }
+.flatpickr-current-month { font-size: 14px; font-weight: 500; padding-top: 8px; }
+.flatpickr-current-month .numInputWrapper { width: 64px; }
+.flatpickr-current-month input.cur-year { padding: 0 0 0 .5ch; width: 64px; border: 0; border-radius: 0; background: transparent; height: 24px; font-size: 14px; }
+.flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month { padding-top: 14px; }
+.flatpickr-weekdays { padding: 4px 0; }
+span.flatpickr-weekday { color: #798870; font-size: 11px; font-weight: 500; }
+.flatpickr-day { color: #566b4e; border-radius: 9px; font-size: 12px; }
+.flatpickr-day:hover, .flatpickr-day:focus { background: #edf3e6; border-color: #edf3e6; }
+.flatpickr-day.today { border-color: #adc29a; }
+.flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.selected:focus { background: #52794b; border-color: #52794b; color: white; }
+.flatpickr-calendar.static { top: calc(100% + 8px); }
+.flatpickr-wrapper { display: block; width: 100%; }
+.date-switch .flatpickr-wrapper { width: auto; }
+.flatpickr-calendar.noCalendar { width: 185px; }
+.flatpickr-time { border-radius: 0 0 12px 12px; }
+.flatpickr-time .numInputWrapper { height: 44px; }
+.flatpickr-time input.flatpickr-hour, .flatpickr-time input.flatpickr-minute { font-size: 17px; font-weight: 500; color: #466b40; border: 0; border-radius: 0; padding: 0; background: #f5f8ef; height: 44px; }
+.flatpickr-time .flatpickr-time-separator { color: #76926a; }
+.flatpickr-calendar.hasTime .flatpickr-time { border-top-color: #e1e9d8; }
+.numInputWrapper span:hover { background: #dbe8ce; }
+.workbench-demo input.flatpickr-input[readonly] { cursor: pointer; }
